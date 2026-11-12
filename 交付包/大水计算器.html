@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>大水计算器 · 桌宠版</title>
+<style>
+:root{
+  --blue:#39a9e8; --blue-d:#1677bd; --deep:#0d4b6e; --ink:#163b52;
+  --mint:#79dfc2; --orange:#ff9d5c; --red:#f2635f; --glass:rgba(255,255,255,.78);
+  --line:rgba(22,119,189,.14); --shadow:0 14px 40px rgba(13,75,110,.14);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--ink); overflow:hidden;
+  background:
+    radial-gradient(900px 600px at 12% 8%,#d9f1ff 0%,transparent 60%),
+    radial-gradient(700px 700px at 88% 92%,#dff7ee 0%,transparent 60%),
+    linear-gradient(160deg,#f2fbff 0%,#eaf5ff 55%,#f6fcff 100%);
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(58,169,232,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(58,169,232,.055) 1px,transparent 1px);
+  background-size:32px 32px}
+.drop{position:fixed;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:linear-gradient(140deg,rgba(255,255,255,.9),rgba(120,205,245,.35));
+  box-shadow:inset -3px -3px 8px rgba(58,169,232,.18);pointer-events:none;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -26px}}
+
+/* ---------- 桌宠 ---------- */
+#pet{position:fixed;left:6vw;bottom:7vh;width:186px;height:206px;z-index:30;cursor:grab;touch-action:none;
+  filter:drop-shadow(0 14px 18px rgba(13,75,110,.18));transition:filter .2s}
+#pet.dragging{cursor:grabbing;filter:drop-shadow(0 22px 26px rgba(13,75,110,.28))}
+#pet.talk svg{animation:talk .5s ease-in-out 2}
+@keyframes talk{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-2deg)}}
+#pet svg{width:100%;height:100%;display:block;animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+#bubble{position:absolute;left:50%;bottom:calc(100% - 6px);transform:translateX(-50%);width:248px;
+  background:#fff;border:2px solid #bfe6fb;border-radius:18px;padding:12px 14px;font-size:13px;line-height:1.6;
+  box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,translate .25s;translate:0 8px;z-index:35}
+#bubble.show{opacity:1;translate:0 0}
+#bubble::after{content:"";position:absolute;left:50%;bottom:-9px;width:14px;height:14px;background:#fff;
+  border-right:2px solid #bfe6fb;border-bottom:2px solid #bfe6fb;transform:translateX(-50%) rotate(45deg)}
+#bubble .who{font-size:11px;color:var(--blue-d);font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+#petTag{position:absolute;left:50%;top:calc(100% - 14px);transform:translateX(-50%);white-space:nowrap;
+  font-size:11px;font-weight:700;color:#fff;background:linear-gradient(90deg,var(--blue),#5cc6ee);
+  padding:4px 12px;border-radius:99px;box-shadow:0 4px 10px rgba(58,169,232,.35)}
+
+/* ---------- 主面板 ---------- */
+#panel{position:fixed;right:22px;top:22px;bottom:22px;width:378px;z-index:20;display:flex;flex-direction:column;
+  background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.9);border-radius:26px;box-shadow:var(--shadow);overflow:hidden;
+  transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .3s}
+#panel.hide{transform:translateX(calc(100% + 40px));opacity:0;pointer-events:none}
+.phead{padding:18px 20px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(145deg,var(--blue),#7dd6f5);
+  display:grid;place-items:center;font-size:19px;box-shadow:0 5px 12px rgba(58,169,232,.35)}
+.htitle{font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.hsub{font-size:11px;color:#6b8ba0;margin-top:2px}
+.iconbtn{margin-left:auto;width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:#fff;
+  color:var(--blue-d);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:.2s}
+.iconbtn:hover{background:#eaf7ff;transform:translateY(-1px)}
+.pbody{flex:1;overflow-y:auto;padding:16px 20px 22px;scrollbar-width:thin}
+.pbody::-webkit-scrollbar{width:5px}.pbody::-webkit-scrollbar-thumb{background:#bfe0f2;border-radius:9px}
+
+.card{background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:14px}
+.card.tight{padding:12px 14px}
+.sect{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sect b{font-size:13px;font-weight:800}
+.sect span{font-size:11px;color:#7b98aa}
+
+/* 进度 */
+.progwrap{display:flex;align-items:center;gap:16px}
+.ring{position:relative;width:112px;height:112px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:#e3f2fb}.ring .bar{stroke:url(#pg);stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.ringtxt{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ringtxt strong{font-size:22px;line-height:1;color:var(--deep)}
+.ringtxt small{font-size:10px;color:#7b98aa;margin-top:4px}
+.pinfo{flex:1;min-width:0}
+.pinfo .big{font-size:26px;font-weight:800;color:var(--deep);line-height:1.1}
+.pinfo .big em{font-size:13px;font-style:normal;color:#7b98aa;font-weight:600}
+.pinfo .desc{font-size:12px;color:#5d7d92;line-height:1.6;margin-top:6px}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;margin-top:8px}
+.badge.ok{background:#dcf7ec;color:#12805d}.badge.no{background:#fff0e2;color:#c46a1c}.badge.over{background:#ffe7e6;color:#c2413d}
+
+/* 按钮 */
+.btn{border:0;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:.18s;background:#eaf6ff;color:var(--blue-d)}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(58,169,232,.22)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:linear-gradient(135deg,var(--blue),#5cc6ee);color:#fff;box-shadow:0 6px 14px rgba(58,169,232,.3)}
+.btn.ghost{background:#fff;border:1px solid var(--line);color:#5d7d92}
+.btn.warn{background:#fff1e6;color:#c46a1c}
+.btn.danger{background:#ffeaea;color:#c2413d}
+.btn.big{font-size:14px;padding:12px}
+.watergrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.watergrid .btn{padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
+.watergrid .btn small{font-size:9px;font-weight:600;opacity:.72}
+.customrow{display:flex;gap:8px;margin-top:9px}
+.customrow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:11px;padding:6px 11px;border-radius:99px;border:1px solid var(--line);background:#fff;color:#5d7d92;cursor:pointer;transition:.18s}
+.chip:hover{border-color:var(--blue)}
+.chip.on{background:linear-gradient(135deg,var(--blue),#5cc6ee);color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 10px rgba(58,169,232,.28)}
+
+/* 语录 */
+.quotecard{background:linear-gradient(145deg,#eaf8ff,#f6fffc);border:1px solid #cbeafb;position:relative;overflow:hidden}
+.quotecard::before{content:"“";position:absolute;right:10px;top:-18px;font-size:88px;color:rgba(58,169,232,.13);font-family:Georgia,serif}
+.qtext{font-size:14px;line-height:1.75;font-weight:700;color:var(--deep);position:relative;min-height:48px}
+.qmeta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;position:relative}
+.qmeta span{font-size:10px;background:rgba(255,255,255,.85);border:1px solid #d6eefb;color:#4d809c;padding:3px 8px;border-radius:99px}
+.qfoot{display:flex;align-items:center;gap:8px;margin-top:11px;position:relative}
+.qfoot .engine{font-size:10px;color:#8aa7b8;margin-right:auto}
+
+/* 记录 */
+.loglist{max-height:168px;overflow-y:auto}
+.logrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.logrow:last-child{border:0}
+.logrow .ic{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:13px;background:#e7f5ff;flex:none}
+.logrow .ic.milk{background:#fff0e2}
+.logrow .t{color:#8aa7b8;font-variant-numeric:tabular-nums;flex:none}
+.logrow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logrow .v{font-weight:800;color:var(--blue-d)}
+.logrow .v.milk{color:#c46a1c}
+.logrow .del{border:0;background:none;color:#b6cbd7;cursor:pointer;font-size:14px;padding:2px 4px}
+.logrow .del:hover{color:var(--red)}
+.empty{font-size:12px;color:#9ab3c1;text-align:center;padding:16px 0}
+
+/* 周图 */
+.week{display:flex;align-items:flex-end;gap:7px;height:88px;margin-top:6px}
+.wcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+.wbar{width:100%;max-width:26px;border-radius:7px 7px 4px 4px;background:linear-gradient(180deg,#7dd6f5,var(--blue));min-height:3px;transition:height .5s}
+.wbar.miss{background:#e0edf4}.wbar.ok{background:linear-gradient(180deg,#8ce9c6,#38bd92)}
+.wlab{font-size:9px;color:#8aa7b8;white-space:nowrap}
+
+/* 底栏 */
+.pfoot{padding:12px 20px 16px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px;background:rgba(255,255,255,.5)}
+.pfoot .btn{padding:11px 6px}
+
+/* ---------- 弹层 ---------- */
+#mask{position:fixed;inset:0;background:rgba(10,50,75,.42);backdrop-filter:blur(4px);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:18px}
+#mask.show{display:flex}
+.modal{width:min(420px,100%);max-height:88vh;overflow-y:auto;background:#fff;border-radius:24px;
+  box-shadow:0 26px 70px rgba(9,50,76,.3);padding:22px;animation:pop .28s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{transform:scale(.9) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.mtitle{font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.msub{font-size:11px;color:#8aa7b8;margin-bottom:16px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#3f6479}
+.field input,.field select{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;
+  font-size:13px;font-family:inherit;background:#f8fcff;color:var(--ink)}
+.field .hint{font-size:10px;color:#9ab3c1;margin-top:5px;line-height:1.5}
+.fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mbtns{display:flex;gap:9px;margin-top:18px}
+.mbtns .btn{flex:1;padding:11px}
+
+/* 自首通知书 */
+.notice{background:repeating-linear-gradient(0deg,#fffdf7,#fffdf7 26px,#f7f2e6 27px);
+  border:2px solid #e8d9b8;border-radius:14px;padding:16px;position:relative;overflow:hidden}
+.notice .stamp{position:absolute;right:8px;top:56px;border:3px solid var(--red);color:var(--red);
+  font-size:15px;font-weight:900;padding:5px 8px;border-radius:6px;transform:rotate(-14deg);opacity:.8;letter-spacing:.1em}
+.photo{width:100%;aspect-ratio:4/3;border-radius:10px;background:#eef4f8;object-fit:cover;display:block;border:1px solid #e1d3b5}
+.nline{font-size:12px;line-height:1.9;color:#5a4b33}
+.nline b{color:#2f2a20}
+.verdict{margin-top:10px;padding:10px 12px;background:#fff5e8;border-left:3px solid var(--orange);
+  font-size:12px;line-height:1.7;color:#8a5a25;border-radius:0 8px 8px 0}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:90;opacity:0;
+  background:rgba(15,60,88,.94);color:#fff;font-size:12px;padding:11px 18px;border-radius:99px;
+  box-shadow:0 10px 26px rgba(0,0,0,.2);pointer-events:none;transition:.3s;max-width:88vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* 悬浮开关 */
+#togglePet{position:fixed;right:22px;bottom:22px;z-index:25;border:0;border-radius:99px;padding:11px 16px;
+  background:linear-gradient(135deg,var(--blue),#5cc6ee);color:#fff;font-size:12px;font-weight:800;cursor:pointer;
+  box-shadow:0 10px 24px rgba(58,169,232,.4);font-family:inherit;display:none}
+#togglePet.show{display:block}
+
+/* 桌面标语 / 时钟 */
+#hero{position:fixed;left:6vw;top:22vh;z-index:5;max-width:430px;pointer-events:none;user-select:none}
+.hk{font-size:11px;font-weight:800;letter-spacing:.28em;color:#79b2d0;text-transform:uppercase}
+.hc{font-size:76px;font-weight:800;line-height:1.05;letter-spacing:-.045em;
+  color:rgba(13,75,110,.13);font-variant-numeric:tabular-nums;margin:2px 0 6px}
+.hc small{font-size:18px;font-weight:700;letter-spacing:0;color:rgba(13,75,110,.2);margin-left:10px}
+#hero h1{margin:0;font-size:34px;line-height:1.35;font-weight:800;color:rgba(13,75,110,.72);letter-spacing:.01em}
+#hero h1 em{font-style:normal;background:linear-gradient(120deg,#2e9fe0,#38bd92);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+#hero p{margin:12px 0 0;font-size:13px;line-height:1.9;color:rgba(61,110,137,.62)}
+.hb{display:inline-block;margin-top:16px;font-size:11px;font-weight:700;color:#4d90b4;
+  border:1px dashed rgba(58,169,232,.45);border-radius:99px;padding:6px 14px;background:rgba(255,255,255,.4)}
+
+@media(max-width:820px){
+  #panel{left:10px;right:10px;top:auto;bottom:10px;width:auto;height:min(72vh,620px);border-radius:22px}
+  #panel.hide{transform:translateY(calc(100% + 30px))}
+  #hero{display:none}
+  #pet{width:120px;height:134px;left:5vw;bottom:auto;top:12px}
+  #bubble{width:210px;font-size:12px}
+  #togglePet{right:12px;bottom:calc(min(72vh,620px) + 20px)}
+  .pfoot{padding-bottom:max(16px,env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+
+<div class="drop" style="width:26px;height:26px;left:14%;top:22%;animation-delay:0s"></div>
+<div class="drop" style="width:14px;height:14px;left:38%;top:12%;animation-delay:1.6s"></div>
+<div class="drop" style="width:20px;height:20px;left:47%;top:68%;animation-delay:3s"></div>
+<div class="drop" style="width:11px;height:11px;left:8%;top:72%;animation-delay:4.2s"></div>
+
+<!-- ================= 桌面标语 ================= -->
+<div id="hero">
+  <div class="hk">2026 · 大水时代</div>
+  <div class="hc"><span id="heroClock">--:--</span><small id="heroDate"></small></div>
+  <h1>弱者喝饮料，<br>强者喝<em>大水</em>。</h1>
+  <p>小水解渴，大水解人生。<br>人身上一切精神内耗，都是因为水喝得不够多。</p>
+  <div class="hb">💧 1.5L 起 · 大水监察司认证</div>
+</div>
+
+<!-- ================= 桌宠 ================= -->
+<div id="pet" title="拖我走 · 点我说话">
+  <div id="bubble"><div class="who">大水滴 · 大水监察司</div><div id="bubbleText">弱者喝饮料，强者喝大水。</div></div>
+  <svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="dropBg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e6f6ff"/>
+      </linearGradient>
+      <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#63cdf3"/><stop offset="1" stop-color="#1789cf"/>
+      </linearGradient>
+      <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#5cc6ee"/><stop offset="1" stop-color="#38bd92"/>
+      </linearGradient>
+      <clipPath id="dropClip"><path d="M100 14 C100 14 28 96 28 140 a72 72 0 0 0 144 0 C172 96 100 14 100 14 Z"/></clipPath>
+    </defs>
+    <ellipse cx="100" cy="210" rx="54" ry="8" fill="#0d4b6e" opacity=".13"/>
+    <path d="M100 14 C100 14 28 96 28 140 a72 72 0 0 0 144 0 C172 96 100 14 100 14 Z"
+          fill="url(#dropBg)" stroke="#9ed9f5" stroke-width="3"/>
+    <g clip-path="url(#dropClip)">
+      <rect id="waterFill" x="0" y="212" width="200" height="0" fill="url(#waterGrad)" opacity=".9"/>
+      <path id="wave" d="M0 212 Q25 205 50 212 T100 212 T150 212 T200 212"
+            fill="none" stroke="#fff" stroke-width="2.6" opacity=".85" stroke-linecap="round"/>
+      <circle cx="62" cy="170" r="4" fill="#fff" opacity=".45"/>
+      <circle cx="132" cy="186" r="3" fill="#fff" opacity=".4"/>
+    </g>
+    <!-- 高光 -->
+    <path d="M64 108 Q52 132 54 150" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".75"/>
+    <!-- 表情 -->
+    <g id="face">
+      <ellipse cx="80" cy="140" rx="6.5" ry="8" fill="#0d4b6e"/>
+      <ellipse cx="120" cy="140" rx="6.5" ry="8" fill="#0d4b6e"/>
+      <circle cx="82" cy="137" r="2.2" fill="#fff"/><circle cx="122" cy="137" r="2.2" fill="#fff"/>
+      <ellipse cx="65" cy="154" rx="9" ry="5" fill="#ff9db2" opacity=".45"/>
+      <ellipse cx="135" cy="154" rx="9" ry="5" fill="#ff9db2" opacity=".45"/>
+      <path id="mouth" d="M92 158 Q100 166 108 158" stroke="#0d4b6e" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- 小手 + 1.5L 大水瓶 -->
+    <g id="bottle">
+      <path d="M150 152 Q166 146 172 156" stroke="#8fd3f5" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <rect x="158" y="118" width="30" height="62" rx="8" fill="#eaf9ff" stroke="#79c9ee" stroke-width="2.5"/>
+      <rect x="162" y="124" width="22" height="34" rx="4" fill="#8fe0fa" opacity=".65"/>
+      <rect x="160" y="140" width="26" height="14" rx="3" fill="#fff" opacity=".92"/>
+      <text x="173" y="150" font-size="9" font-weight="800" fill="#1677bd" text-anchor="middle" font-family="sans-serif">大水</text>
+      <rect x="166" y="110" width="14" height="9" rx="3" fill="#5cc6ee"/>
+    </g>
+  </svg>
+  <div id="petTag">今日 0%</div>
+</div>
+
+<button id="togglePet">🐳 唤回控制台</button>
+
+<!-- ================= 主面板 ================= -->
+<div id="panel">
+  <div class="phead">
+    <div class="logo">💧</div>
+    <div>
+      <div class="htitle">大水计算器</div>
+      <div class="hsub" id="headSub">大水时代 · 第 1 天</div>
+    </div>
+    <button class="iconbtn" id="btnHelp" title="玩法说明">?</button>
+    <button class="iconbtn" id="btnSet" title="设置">⚙</button>
+    <button class="iconbtn" id="btnFold" title="收起，只留桌宠">⟶</button>
+  </div>
+
+  <div class="pbody">
+    <!-- 今日进度 -->
+    <div class="card">
+      <div class="sect"><b>今日大水 KPI</b><span id="goalLabel">目标 1700ml</span></div>
+      <div class="progwrap">
+        <div class="ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="track" cx="60" cy="60" r="50" fill="none" stroke-width="11"/>
+            <circle id="ringBar" class="bar" cx="60" cy="60" r="50" fill="none" stroke-width="11"
+                    stroke-dasharray="314" stroke-dashoffset="314"/>
+          </svg>
+          <div class="ringtxt"><strong id="pctTxt">0%</strong><small>有效补水</small></div>
+        </div>
+        <div class="pinfo">
+          <div class="big"><span id="mlTxt">0</span><em> / <span id="goalTxt">1700</span> ml</em></div>
+          <div class="desc" id="progDesc">大水瓶还是满的，一滴没动。</div>
+          <div class="badge no" id="progBadge">未达标</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快捷加水 -->
+    <div class="card">
+      <div class="sect"><b>拧开瓶盖，仰头，灌</b><span>少量多次更稳</span></div>
+      <div class="watergrid">
+        <button class="btn" data-ml="100">100<small>小水</small></button>
+        <button class="btn" data-ml="250">250<small>一杯</small></button>
+        <button class="btn" data-ml="500">500<small>半瓶</small></button>
+        <button class="btn primary" data-ml="1500">1500<small>大水 1.5L</small></button>
+      </div>
+      <div class="customrow">
+        <input id="customMl" type="number" min="1" max="3000" placeholder="自定义 ml（比如 350）">
+        <button class="btn ghost" id="btnCustom">记一笔</button>
+      </div>
+    </div>
+
+    <!-- 今日打卡 / 防作弊 / 排行榜 -->
+    <div class="card tight">
+      <div class="sect"><b>🏆 今日打卡</b><span id="scoreTag">按时间完成加分</span></div>
+      <div id="scoreLine" style="font-size:12px;color:#3f6479;line-height:1.8">计算中…</div>
+      <div id="cooldownLine" style="margin-top:7px"></div>
+      <div class="btnrow" style="margin-top:9px">
+        <button class="btn ghost" id="btnBoard" style="font-size:11px">🏆 排行榜</button>
+        <button class="btn ghost" id="btnShare" style="font-size:11px">📤 打卡分享</button>
+      </div>
+    </div>
+
+    <!-- AI 语录 -->
+    <div class="card quotecard">
+      <div class="sect"><b>✦ AI 大水语录</b><span id="quoteTime">刚刚生成</span></div>
+      <div class="qtext" id="quoteText">正在感知时间、天气与你的心情…</div>
+      <div class="qmeta" id="quoteMeta"></div>
+      <div class="qfoot">
+        <span class="engine" id="engineTag">本地语录引擎</span>
+        <button class="btn ghost" id="btnQuote">换一句</button>
+      </div>
+    </div>
+
+    <!-- 心情 -->
+    <div class="card tight">
+      <div class="sect"><b>此刻心情</b><span>影响语录语气</span></div>
+      <div class="chips" id="moodChips"></div>
+    </div>
+
+    <!-- 位置 + 天气 -->
+    <div class="card tight">
+      <div class="sect"><b>📍 位置 / 当前天气</b><span id="weatherSrc">获取中…</span></div>
+      <div id="locLine" style="font-size:11.5px;font-weight:700;color:var(--deep);line-height:1.7">正在定位…</div>
+      <div id="weatherLine" style="font-size:12px;color:#5d7d92;line-height:1.7">正在连接气象数据…</div>
+      <div class="chips" id="weatherChips" style="margin-top:9px"></div>
+      <button class="btn ghost" id="btnLoc" style="width:100%;margin-top:9px;font-size:11px">📍 重新定位 / 手动选省市区</button>
+    </div>
+
+    <!-- 时间轴 -->
+    <div class="card">
+      <div class="sect"><b>今日流水</b><span id="logCount">0 笔</span></div>
+      <div class="loglist" id="logList"></div>
+    </div>
+
+    <!-- 一周 -->
+    <div class="card">
+      <div class="sect"><b>近 7 日</b><span id="streakTxt">连续达标 0 天</span></div>
+      <div class="week" id="weekChart"></div>
+    </div>
+  </div>
+
+  <div class="pfoot">
+    <button class="btn warn big" id="btnSin">🥤 偷喝奶茶 · 自首</button>
+    <button class="btn primary big" id="btnReport">📋 今日结算</button>
+  </div>
+</div>
+
+<div id="mask"><div class="modal" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script>/* ============================================================
+   行政区划 + 定位模块（两版共用，内嵌数据，离线可用）
+   数据：DataV.GeoAtlas（经 github.com/zhChuXiao/ChinaGeoJson 的 info.json），
+   省 34 / 市 370 / 区·县·县级市 2875，中心点已由 GCJ-02 转 WGS-84。
+   ============================================================ */
+const GEO = {"tree":[["上海市",121.4681,31.2336,[["上海市",121.4681,31.2336,[["黄浦区",121.4859,31.2248],["徐汇区",121.4329,31.1819],["长宁区",121.4176,31.22],["静安区",121.4436,31.2309],["普陀区",121.3878,31.2435],["虹口区",121.4874,31.263],["杨浦区",121.5184,31.2728],["闵行区",121.3713,31.1136],["宝山区",121.4855,31.4008],["嘉定区",121.2459,31.3855],["浦东新区",121.5635,31.2481],["金山区",121.3262,30.7269],["松江区",121.2191,31.0326],["青浦区",121.1084,31.1531],["奉贤区",121.4539,30.9144],["崇明区",121.3928,31.6287]]]]],["云南省",102.7108,25.0436,[["昆明市",102.7108,25.0436,[["五华区",102.703,25.0451],["盘龙区",102.7276,25.0732],["官渡区",102.722,25.0242],["西山区",102.7045,25.0273],["东川区",103.1801,26.0867],["呈贡区",102.7999,24.8923],["晋宁区",102.5938,24.6701],["富民县",102.4965,25.2226],["宜良县",103.1441,24.921],["石林彝族自治县",103.2701,24.7575],["嵩明县",103.037,25.3379],["禄劝彝族苗族自治县",102.4675,25.5594],["寻甸回族彝族自治县",103.2557,25.5625],["安宁市",102.4841,24.9247]]],["曲靖市",103.7958,25.5046,[["麒麟区",103.796,25.5043],["沾益区",103.8173,25.604],["马龙区",103.5769,25.4326],["陆良县",103.6534,25.0259],["师宗县",103.9918,24.8287],["罗平县",104.307,24.8886],["富源县",104.2547,25.6737],["会泽县",103.2981,26.4163],["宣威市",104.0932,26.231]]],["玉溪市",102.5426,24.3535,[["红塔区",102.5422,24.3538],["江川区",102.7484,24.2939],["通海县",102.7586,24.1151],["华宁县",102.9276,24.1929],["易门县",102.1606,24.6725],["峨山彝族自治县",102.4028,24.1759],["新平彝族傣族自治县",101.9895,24.0693],["元江哈尼族彝族傣族自治县",101.9982,23.6003],["澄江市",102.9153,24.6728]]],["保山市",99.1662,25.1147,[["隆阳区",99.1649,25.115],["施甸县",99.1829,24.7338],["龙陵县",98.6932,24.595],["昌宁县",99.6115,24.8268],["腾冲市",98.497,25.0205]]],["昭通市",103.7151,27.3404,[["昭阳区",103.7152,27.3401],["鲁甸县",103.5474,27.1952],["巧家县",102.9278,26.9154],["盐津县",104.2328,28.1104],["大关县",103.8896,27.7507],["永善县",103.6354,28.2351],["绥江县",103.959,28.6034],["镇雄县",104.8705,27.4398],["彝良县",104.0462,27.6307],["威信县",105.0456,27.8467],["水富市",104.4128,28.6329]]],["丽江市",100.2319,26.8757,[["古城区",100.2333,26.8758],["玉龙纳西族自治县",100.2372,26.8342],["永胜县",100.7496,26.6892],["华坪县",101.2662,26.6324],["宁蒗彝族自治县",100.8513,27.2847]]],["普洱市",100.9711,22.7803,[["思茅区",100.972,22.7796],["宁洱哈尼族彝族自治县",101.0438,23.0652],["墨江哈尼族自治县",101.6862,23.4309],["景东彝族自治县",100.8389,24.4516],["景谷傣族彝族自治县",100.7003,23.503],["镇沅彝族哈尼族拉祜族自治县",101.1069,24.0083],["江城哈尼族彝族自治县",101.8579,22.5865],["孟连傣族拉祜族佤族自治县",99.5846,22.3291],["澜沧拉祜族自治县",99.9304,22.5562],["西盟佤族自治县",99.5936,22.6476]]],["临沧市",100.0857,23.8892,[["临翔区",100.0852,23.8892],["凤庆县",99.9178,24.5959],["云县",100.1244,24.4418],["永德县",99.2528,24.031],["镇康县",98.827,23.7642],["双江拉祜族佤族布朗族傣族自治县",99.8235,23.4803],["耿马傣族佤族自治县",99.4014,23.5371],["沧源佤族自治县",99.2466,23.1497]]],["楚雄彝族自治州",101.5446,25.0451,[["楚雄市",101.5447,25.044],["双柏县",101.6369,24.6882],["牟定县",101.5416,25.3152],["南华县",101.2735,25.1953],["姚安县",101.2369,25.5084],["大姚县",101.322,25.7254],["永仁县",101.6697,26.0597],["元谋县",101.8695,25.7066],["武定县",102.4052,25.5329],["禄丰市",102.0741,25.146]]],["红河哈尼族彝族自治州",103.3821,23.3693,[["个旧市",103.1529,23.3629],["开远市",103.2569,23.7165],["蒙自市",103.383,23.3693],["弥勒市",103.4349,24.4112],["屏边苗族自治县",103.6853,22.9899],["建水县",102.8191,23.6211],["石屏县",102.4831,23.7152],["泸西县",103.7576,24.5353],["元阳县",102.8357,23.2226],["红河县",102.4197,23.3717],["金平苗族瑶族傣族自治县",103.2266,22.7829],["绿春县",102.3913,22.9962],["河口瑶族自治县",103.9597,22.5106]]],["文山壮族苗族自治州",104.2419,23.3722,[["文山市",104.2422,23.3719],["砚山县",104.3417,23.6148],["西畴县",104.6734,23.4402],["麻栗坡县",104.6996,23.127],["马关县",104.3963,23.0143],["丘北县",104.1922,24.0437],["广南县",105.0537,24.0529],["富宁县",105.6255,23.6293]]],["西双版纳傣族自治州",100.7968,22.0046,[["景洪市",100.7968,22.0049],["勐海县",100.4471,21.9585],["勐腊县",101.5658,21.4822]]],["大理白族自治州",100.2246,25.5925,[["大理市",100.2403,25.5961],["漾濞彝族自治县",99.957,25.6727],["祥云县",100.553,25.4802],["宾川县",100.578,25.8292],["弥渡县",100.4895,25.3455],["南涧彝族自治县",100.5176,25.0443],["巍山彝族回族自治县",100.3068,25.2338],["永平县",99.5326,25.4644],["云龙县",99.3683,25.888],["洱源县",99.9507,26.1147],["剑川县",99.905,26.5338],["鹤庆县",100.1722,26.5619]]],["德宏傣族景颇族自治州",98.5782,24.4399,[["瑞丽市",97.8557,24.0137],["芒市",98.5775,24.4399],["梁河县",98.2979,24.8104],["盈江县",97.9338,24.7127],["陇川县",97.7941,24.187]]],["怒江傈僳族自治州",98.8539,25.8543,[["泸水市",98.8537,25.8545],["福贡县",98.867,26.9065],["贡山独龙族怒族自治县",98.6658,27.7416],["兰坪白族普米族自治县",99.4202,26.4572]]],["迪庆藏族自治州",99.7054,27.8303,[["香格里拉市",99.7076,27.8293],["德钦县",98.9146,28.4869],["维西傈僳族自治县",99.2854,27.1844]]]]],["内蒙古自治区",111.664,40.817,[["呼和浩特市",111.664,40.817,[["新城区",111.6791,40.8249],["回民区",111.6554,40.8138],["玉泉区",111.6587,40.7981],["赛罕区",111.6916,40.8065],["土默特左旗",111.1268,40.7189],["托克托县",111.1907,40.2755],["和林格尔县",111.8174,40.3792],["清水河县",111.6656,39.9115],["武川县",111.4495,41.0927]]],["包头市",109.8347,40.657,[["东河区",110.0209,40.5858],["昆都仑区",109.8172,40.6602],["青山区",109.8744,40.6675],["石拐区",110.2667,40.6708],["白云鄂博矿区",109.9643,41.7674],["九原区",109.9624,40.5994],["土默特右旗",110.5209,40.5653],["固阳县",110.0573,41.0283],["达尔罕茂明安联合旗",110.4322,41.7007]]],["乌海市",106.8208,39.6728,[["海勃湾区",106.813,39.6726],["海南区",106.8802,39.4408],["乌达区",106.718,39.5014]]],["赤峰市",118.9505,42.2733,[["红山区",118.9548,42.2677],["元宝山区",119.2834,42.039],["松山区",118.9327,42.2791],["阿鲁科尔沁旗",120.0886,43.8764],["巴林左旗",119.3848,43.9784],["巴林右旗",118.6719,43.5267],["林西县",118.0507,43.6029],["克什克腾旗",117.5357,43.2541],["翁牛特旗",119.016,42.9348],["喀喇沁旗",118.7023,41.9257],["宁城县",119.3327,41.5964],["敖汉旗",119.9007,42.2851]]],["通辽市",122.2576,43.6151,[["科尔沁区",122.2585,43.615],["科尔沁左翼中旗",123.3076,44.125],["科尔沁左翼后旗",122.3495,42.9521],["开鲁县",121.3029,43.6],["库伦旗",121.7693,42.7325],["奈曼旗",120.6571,42.8447],["扎鲁特旗",120.8997,44.5536],["霍林郭勒市",119.6512,45.5305]]],["鄂尔多斯市",109.9846,39.8161,[["东胜区",109.9837,39.8168],["康巴什区",109.7844,39.6065],["达拉特旗",110.0343,40.4028],["准格尔旗",111.2318,39.8641],["鄂托克前旗",107.4765,38.1827],["鄂托克旗",107.9775,39.095],["杭锦旗",108.7311,39.8308],["乌审旗",108.8374,38.5962],["伊金霍洛旗",109.7817,39.6033]]],["呼伦贝尔市",119.7508,49.2134,[["海拉尔区",119.7576,49.2119],["扎赉诺尔区",117.7084,49.4547],["阿荣旗",123.4575,48.1283],["莫力达瓦达斡尔族自治旗",124.5005,48.4764],["鄂伦春自治旗",123.7182,50.5887],["鄂温克族自治旗",119.7467,49.1414],["陈巴尔虎旗",119.4298,49.3263],["新巴尔虎左旗",118.26,48.2147],["新巴尔虎右旗",116.8186,48.6674],["满洲里市",117.4473,49.5889],["牙克石市",120.7224,49.2851],["扎兰屯市",122.738,48.0053],["额尔古纳市",120.1714,50.2423],["根河市",121.5259,50.7792]]],["巴彦淖尔市",107.4114,40.7559,[["临河区",107.4114,40.7556],["五原县",108.2654,41.0961],["磴口县",107.001,40.3294],["乌拉特前旗",108.6517,40.724],["乌拉特中旗",108.51,41.5707],["乌拉特后旗",107.0695,41.0826],["杭锦后旗",107.1423,40.8873]]],["乌兰察布市",113.1073,41.0323,[["集宁区",113.1092,41.0323],["卓资县",112.5711,40.8944],["化德县",114.0032,41.8973],["商都县",113.5537,41.5583],["兴和县",113.8273,40.871],["凉城县",112.4941,40.5304],["察哈尔右翼前旗",113.2049,40.7854],["察哈尔右翼中旗",112.6269,41.2726],["察哈尔右翼后旗",113.1834,41.4452],["四子王旗",111.6943,41.5262],["丰镇市",113.1563,40.4362]]],["兴安盟",122.0641,46.0742,[["乌兰浩特市",122.0628,46.0752],["阿尔山市",119.9371,47.1751],["科尔沁右翼前旗",121.9517,46.0747],["科尔沁右翼中旗",121.4667,45.0576],["扎赉特旗",122.9033,46.7234],["突泉县",121.559,45.3791]]],["锡林郭勒盟",116.0841,43.9418,[["二连浩特市",111.9726,43.6509],["锡林浩特市",116.085,43.9421],["阿巴嘎旗",114.9639,44.0208],["苏尼特左旗",113.6462,43.8522],["苏尼特右旗",112.6484,42.7448],["东乌珠穆沁旗",116.9731,45.5085],["西乌珠穆沁旗",117.6084,44.5845],["太仆寺旗",115.2807,41.8931],["镶黄旗",113.837,42.2374],["正镶白旗",115.0247,42.2847],["正蓝旗",115.9969,42.2438],["多伦县",116.4709,42.1958]]],["阿拉善盟",105.7022,38.8443,[["阿拉善左旗",105.6977,38.8467],["阿拉善右旗",101.67,39.211],["额济纳旗",101.0672,41.9569]]]]],["北京市",116.399,39.9036,[["北京市",116.399,39.9036,[["东城区",116.4125,39.9161],["西城区",116.3606,39.9139],["朝阳区",116.4803,39.9202],["丰台区",116.2809,39.8624],["石景山区",116.1893,39.9133],["海淀区",116.3042,39.9548],["门头沟区",116.0991,39.9358],["房山区",116.1329,39.7342],["通州区",116.6527,39.9014],["顺义区",116.6476,40.1278],["昌平区",116.2298,40.2168],["大兴区",116.3319,39.7276],["怀柔区",116.6312,40.3232],["平谷区",117.1058,40.1434],["密云区",116.8373,40.3762],["延庆区",115.9789,40.4641]]]]],["台湾省",121.5051,25.0471,[["台湾省",121.5051,25.0471,[["台湾省",121.5051,25.0471]]]]],["吉林省",125.318,43.8844,[["长春市",125.318,43.8844,[["南关区",125.3307,43.8878],["宽城区",125.3363,43.9014],["朝阳区",125.3115,43.8625],["二道区",125.3781,43.8683],["绿园区",125.2661,43.8898],["双阳区",125.6529,43.5228],["九台区",125.8386,44.1551],["农安县",125.1687,44.4291],["榆树市",126.5443,44.8257],["德惠市",125.697,44.5319],["公主岭市",124.8115,43.5071]]],["吉林市",126.5473,43.8413,[["昌邑区",126.5651,43.8489],["龙潭区",126.5558,43.9076],["船营区",126.5467,43.8416],["丰满区",126.5551,43.8143],["永吉县",126.4958,43.665],["蛟河市",127.3364,43.718],["桦甸市",126.7397,42.9696],["舒兰市",126.9419,44.409],["磐石市",126.0538,42.9399]]],["四平市",124.3645,43.1677,[["铁西区",124.3547,43.1737],["铁东区",124.3822,43.1646],["梨树县",124.3296,43.3057],["伊通满族自治县",125.2967,43.3429],["双辽市",123.4991,43.5159]]],["辽源市",125.139,42.9002,[["龙山区",125.1388,42.9002],["西安区",125.145,42.9179],["东丰县",125.5235,42.673],["东辽县",124.9859,42.9254]]],["通化市",125.9308,41.719,[["东昌区",125.9311,41.7191],["二道江区",126.04,41.7751],["通化县",125.7471,41.6756],["辉南县",126.0367,42.681],["柳河县",125.7345,42.2792],["梅河口市",125.6813,42.5278],["集安市",126.1805,41.1242]]],["白山市",126.422,41.94,[["浑江区",126.4222,41.9406],["江源区",126.5789,42.046],["抚松县",127.2679,42.3303],["靖宇县",126.8028,42.3874],["长白朝鲜族自治县",128.1975,41.417],["临江市",126.9139,41.8085]]],["松原市",124.8173,45.1163,[["宁江区",124.8216,45.1745],["前郭尔罗斯蒙古族自治县",124.8205,45.1143],["长岭县",123.979,44.2746],["乾安县",124.0179,45.0048],["扶余市",126.0363,44.984]]],["白城市",122.8352,45.6171,[["洮北区",122.8366,45.6174],["镇赉县",123.1958,45.8441],["通榆县",123.0822,44.807],["洮南市",122.7779,45.3371],["大安市",124.2851,45.5055]]],["延边朝鲜族自治州",129.5063,42.9024,[["延吉市",129.5089,42.9045],["图们市",129.8398,42.9642],["敦化市",128.2237,43.3643],["珲春市",130.3586,42.8684],["龙井市",129.4186,42.7684],["和龙市",129.0022,42.5446],["汪清县",129.7591,43.3128],["安图县",128.8956,43.1086]]]]],["四川省",104.0632,30.6619,[["成都市",104.0632,30.6619,[["锦江区",104.0785,30.6601],["青羊区",104.0532,30.6701],["金牛区",104.041,30.6945],["武侯区",104.0492,30.6333],["成华区",104.1005,30.6627],["龙泉驿区",104.2668,30.5633],["青白江区",104.2526,30.8859],["新都区",104.1577,30.8266],["温江区",103.8346,30.7007],["双流区",103.9206,30.576],["郫都区",103.8858,30.8114],["新津区",103.8103,30.417],["金堂县",104.4129,30.8607],["大邑县",103.5203,30.5893],["蒲江县",103.5094,30.1971],["都江堰市",103.6259,30.9937],["彭州市",103.939,30.9877],["邛崃市",103.4592,30.4158],["崇州市",103.6689,30.6342],["简阳市",104.548,30.3935]]],["自贡市",104.7708,29.3556,[["自流井区",104.7755,29.3461],["贡井区",104.7118,29.3485],["大安区",104.7805,29.37],["沿滩区",104.8738,29.2756],["荣县",104.4213,29.4575],["富顺县",104.9814,29.1843]]],["攀枝花市",101.7144,26.584,[["东区",101.7136,26.5845],["西区",101.6365,26.6005],["仁和区",101.7363,26.5007],["米易县",102.1082,26.8908],["盐边县",101.8504,26.6813]]],["泸州市",105.4398,28.8922,[["江阳区",105.4415,28.8859],["纳溪区",105.3737,28.7794],["龙马潭区",105.4316,28.9006],["泸县",105.3728,29.1541],["合江县",105.8306,28.8137],["叙永县",105.4342,28.1712],["古蔺县",105.8099,28.043]]],["德阳市",104.396,31.1301,[["旌阳区",104.387,31.1326],["罗江区",104.5046,31.3055],["中江县",104.6752,31.0393],["广汉市",104.2795,30.9795],["什邡市",104.1712,31.1291],["绵竹市",104.1977,31.3453]]],["绵阳市",104.7389,31.4662,[["涪城区",104.7382,31.4658],["游仙区",104.7672,31.487],["安州区",104.5579,31.5413],["三台县",105.0869,31.0931],["盐亭县",105.3883,31.2253],["梓潼县",105.1601,31.6373],["北川羌族自治县",104.4654,31.618],["平武县",104.528,32.41],["江油市",104.7416,31.7786]]],["广元市",105.826,32.436,[["利州区",105.8225,32.4346],["昭化区",105.9604,32.3252],["朝天区",105.8855,32.645],["旺苍县",106.2865,32.2306],["青川县",105.2354,32.5879],["剑阁县",105.5234,32.2889],["苍溪县",105.9361,31.7346]]],["遂宁市",105.5679,30.5161,[["船山区",105.5788,30.5054],["安居区",105.4557,30.3487],["蓬溪县",105.71,30.7774],["大英县",105.2489,30.5842],["射洪市",105.3782,30.871]]],["内江市",105.0629,29.5896,[["市中区",105.0622,29.5878],["东兴区",105.0639,29.6027],["威远县",104.6658,29.5297],["资中县",104.8498,29.7781],["隆昌市",105.2847,29.341]]],["乐山市",103.7591,29.5848,[["市中区",103.7532,29.5911],["沙湾区",103.548,29.4195],["五通桥区",103.8147,29.4091],["金口河区",103.0758,29.2488],["犍为县",103.9422,29.2129],["井研县",104.0664,29.6542],["夹江县",103.5769,29.7439],["沐川县",103.9001,28.9597],["峨边彝族自治县",103.2602,29.2332],["马边彝族自治县",103.5449,28.8423],["峨眉山市",103.4903,29.6002]]],["南充市",106.079,30.7976,[["顺庆区",106.0801,30.7979],["高坪区",106.105,30.7841],["嘉陵区",106.063,30.7653],["南部县",106.0571,31.3515],["营山县",106.5611,31.0784],["蓬安县",106.4094,31.0301],["仪陇县",106.2932,31.2735],["西充县",105.8895,30.9972],["阆中市",105.9715,31.5827]]],["眉山市",103.8297,30.0511,[["东坡区",103.8294,30.0509],["彭山区",103.868,30.1952],["仁寿县",104.1452,29.9993],["洪雅县",103.3727,29.9074],["丹棱县",103.5162,30.0155],["青神县",103.844,29.8343]]],["宜宾市",104.6285,28.7636,[["翠屏区",104.6279,28.7636],["南溪区",104.9783,28.8431],["叙州区",104.5392,28.6991],["江安县",105.0655,28.7312],["长宁县",104.9185,28.5808],["高县",104.5168,28.4392],["珙县",104.7097,28.4525],["筠连县",104.5055,28.1655],["兴文县",105.2333,28.3064],["屏山县",104.1602,28.6456]]],["广安市",106.6296,30.4592,[["广安区",106.6291,30.4592],["前锋区",106.8893,30.4991],["岳池县",106.4404,30.536],["武胜县",106.2886,30.3469],["邻水县",106.931,30.3371],["华蓥市",106.7738,30.3832]]],["达州市",107.4977,31.2117,[["通川区",107.4965,31.2158],["达川区",107.5034,31.2013],["宣汉县",107.7177,31.3572],["开江县",107.8598,31.088],["大竹县",107.203,30.7388],["渠县",106.9666,30.8389],["万源市",108.0329,32.0699]]],["雅安市",102.9992,29.9904,[["雨城区",103.0016,29.9845],["名山区",103.1101,30.0872],["荥经县",102.8431,29.7984],["汉源县",102.6757,29.3529],["石棉县",102.3579,29.2369],["天全县",102.7618,30.0627],["芦山县",102.9225,30.1558],["宝兴县",102.8118,30.3718]]],["巴中市",106.7495,31.861,[["巴州区",106.7495,31.8605],["恩阳区",106.4825,31.8185],["通江县",107.2431,31.9143],["南江县",106.8393,32.3556],["平昌县",107.0973,31.5648]]],["资阳市",104.6395,30.125,[["雁江区",104.6399,30.1245],["安岳县",105.3332,30.1018],["乐至县",105.028,30.2782]]],["阿坝藏族羌族自治州",102.2197,31.902,[["马尔康市",102.2195,31.902],["汶川县",103.5786,31.477],["理县",103.1634,31.4389],["茂县",103.8485,31.6827],["松潘县",103.5971,32.6408],["九寨沟县",104.2338,33.264],["金川县",102.0628,31.4784],["小金县",102.3614,31.0013],["黑水县",102.989,32.064],["壤塘县",100.9776,32.2673],["阿坝县",101.6992,32.9064],["若尔盖县",102.9619,33.5778],["红原县",102.5434,32.7962]]],["甘孜藏族自治州",101.9623,30.0535,[["康定市",101.9625,30.0536],["泸定县",102.2317,29.9152],["丹巴县",101.8846,30.8798],["九龙县",101.5053,29.0051],["雅江县",101.0142,30.0349],["道孚县",101.1215,30.981],["炉霍县",100.6782,31.395],["甘孜县",99.9905,31.622],["新龙县",100.3108,30.9414],["德格县",98.5797,31.8092],["白玉县",98.8238,31.2113],["石渠县",98.1002,32.9773],["色达县",100.3303,32.271],["理塘县",100.2686,29.9945],["巴塘县",99.108,30.0083],["乡城县",99.7988,28.9341],["稻城县",100.2955,29.0406],["得荣县",99.287,28.7147]]],["凉山彝族自治州",102.2573,27.8902,[["西昌市",102.2573,27.8892],["木里藏族自治县",101.2786,27.9303],["盐源县",101.5073,27.4269],["德昌县",102.1773,27.4072],["会理市",102.2481,26.6623],["会东县",102.5777,26.6344],["宁南县",102.7558,27.0687],["普格县",102.5397,27.3804],["布拖县",102.8073,27.7125],["金阳县",103.2468,27.6993],["昭觉县",102.8425,28.0141],["喜德县",102.4106,28.3088],["冕宁县",102.1684,28.5542],["越西县",102.5074,28.643],["甘洛县",102.7743,28.9802],["美姑县",103.13,28.3313],["雷波县",103.5697,28.2666]]]]],["天津市",117.1839,39.1245,[["天津市",117.1839,39.1245,[["和平区",117.1896,39.1173],["河东区",117.2203,39.1211],["河西区",117.2113,39.1009],["南开区",117.1578,39.1194],["河北区",117.1953,39.1556],["红桥区",117.1569,39.1739],["东丽区",117.3076,39.0867],["西青区",117.0061,39.1384],["津南区",117.376,38.9885],["北辰区",117.1284,39.2244],["武清区",117.0516,39.3757],["宝坻区",117.3016,39.7157],["滨海新区",117.648,39.032],["宁河区",117.8221,39.3279],["静海区",116.9195,38.935],["蓟州区",117.4008,40.0439]]]]],["宁夏回族自治区",106.2738,38.4659,[["银川市",106.2738,38.4659,[["兴庆区",106.274,38.467],["西夏区",106.1275,38.4918],["金凤区",106.2241,38.4769],["永宁县",106.2494,38.28],["贺兰县",106.3413,38.554],["灵武市",106.3302,38.0935]]],["石嘴山市",106.3715,39.0125,[["大武口区",106.3719,39.0133],["惠农区",106.7708,39.2293],["平罗县",106.5405,38.9062]]],["吴忠市",106.195,37.9856,[["利通区",106.195,37.9854],["红寺堡区",106.0628,37.4209],["盐池县",107.4001,37.7835],["同心县",105.9108,36.9828],["青铜峡市",106.0709,38.0208]]],["固原市",106.281,36.0047,[["原州区",106.2805,36.0055],["西吉县",105.7278,35.9656],["隆德县",106.1191,35.6184],["泾源县",106.3344,35.4937],["彭阳县",106.6373,35.8503]]],["中卫市",105.1858,37.5144,[["沙坡头区",105.1868,37.514],["中宁县",105.6718,37.4893],["海原县",105.6434,36.5622]]]]],["安徽省",117.2775,31.8632,[["合肥市",117.2775,31.8632,[["瑶海区",117.3098,31.8716],["庐阳区",117.2783,31.871],["蜀山区",117.2566,31.8579],["包河区",117.2802,31.8315],["长丰县",117.1591,32.4805],["肥东县",117.4576,31.8859],["肥西县",117.1606,31.7215],["庐江县",117.2844,31.2535],["巢湖市",117.8689,31.6027]]],["芜湖市",118.371,31.3282,[["镜湖区",118.3709,31.3274],["鸠江区",118.3948,31.3645],["弋江区",118.3721,31.3153],["湾沚区",118.5674,31.1475],["繁昌区",118.1961,31.083],["南陵县",118.3318,30.9218],["无为市",117.9062,31.3053]]],["蚌埠市",117.3574,32.9414,[["龙子湖区",117.3765,32.9521],["蚌山区",117.35,32.9398],["禹会区",117.3468,32.9337],["淮上区",117.3413,32.9649],["怀远县",117.1946,32.9588],["五河县",117.8834,33.1481],["固镇县",117.3102,33.3202]]],["淮南市",117.0128,32.6496,[["大通区",117.0473,32.634],["田家庵区",117.0128,32.6463],["谢家集区",116.8602,32.6005],["八公山区",116.8359,32.6304],["潘集区",116.8116,32.7842],["凤台县",116.7175,32.7074],["寿县",116.7801,32.5794]]],["马鞍山市",118.5027,31.6914,[["花山区",118.5061,31.701],["雨山区",118.4879,31.6879],["博望区",118.8387,31.5644],["当涂县",118.4846,31.5581],["含山县",118.1,31.7296],["和县",118.3576,31.7185]]],["淮北市",116.7893,33.9731,[["杜集区",116.8286,33.9927],["相山区",116.7854,33.9723],["烈山区",116.8041,33.891],["濉溪县",116.762,33.9178]]],["铜陵市",117.8112,30.9322,[["铜官区",117.8108,30.9299],["义安区",117.7869,30.9546],["郊区",117.8017,30.9112],["枞阳县",117.2166,30.703]]],["安庆市",117.0382,30.5112,[["迎江区",117.0396,30.5087],["大观区",117.0291,30.508],["宜秀区",117.0645,30.5436],["怀宁县",116.8236,30.7375],["太湖县",116.3001,30.4543],["宿松县",116.1149,30.1607],["望江县",116.6859,30.1275],["岳西县",116.3552,30.8507],["桐城市",116.9545,31.0529],["潜山市",116.5688,30.6408]]],["黄山市",118.3122,29.7117,[["屯溪区",118.3122,29.7116],["黄山区",118.1312,30.2968],["徽州区",118.3345,29.8276],["歙县",118.4228,29.8701],["休宁县",118.1833,29.7913],["黟县",117.9378,29.9265],["祁门县",117.7119,29.856]]],["滁州市",118.3109,32.3056,[["琅琊区",118.3111,32.3058],["南谯区",118.2916,32.3319],["来安县",118.4278,32.4521],["全椒县",118.2633,32.0959],["定远县",117.6782,32.5292],["凤阳县",117.557,32.8692],["天长市",119.0059,32.6835],["明光市",117.9925,32.7832]]],["阜阳市",115.8144,32.899,[["颍州区",115.8085,32.8932],["颍东区",115.8535,32.9109],["颍泉区",115.7991,32.9268],["临泉县",115.2561,33.0645],["太和县",115.6219,33.1642],["阜南县",115.5852,32.6404],["颍上县",116.2539,32.6391],["界首市",115.3564,33.2631]]],["宿州市",116.9786,33.6354,[["埇桥区",116.9779,33.6354],["砀山县",116.3455,34.4273],["萧县",116.94,34.1847],["灵璧县",117.5459,33.5423],["泗县",117.88,33.4793]]],["六安市",116.5026,31.7549,[["金安区",116.4981,31.7565],["裕安区",116.4894,31.7527],["叶集区",115.9085,31.8499],["霍邱县",116.2736,32.3434],["舒城县",116.939,31.465],["金寨县",115.8734,31.6838],["霍山县",116.3278,31.4044]]],["亳州市",115.7774,33.8708,[["谯城区",115.7757,33.8707],["涡阳县",116.2062,33.5043],["蒙城县",116.5552,33.2626],["利辛县",116.2024,33.1452]]],["池州市",117.4837,30.6584,[["贵池区",117.4829,30.6597],["东至县",117.0162,30.099],["石台县",117.4775,30.2128],["青阳县",117.8522,30.6407]]],["宣城市",118.7529,30.9479,[["宣州区",118.7533,30.9482],["郎溪县",119.1798,31.1299],["泾县",118.407,30.6882],["绩溪县",118.5899,30.0679],["旌德县",118.5381,30.2907],["宁国市",118.9783,30.629],["广德市",119.4122,30.8952]]]]],["山东省",116.9951,36.6755,[["济南市",116.9951,36.6755,[["历下区",117.0326,36.6638],["市中区",116.9931,36.6571],["槐荫区",116.9423,36.6681],["天桥区",116.9903,36.6931],["历城区",117.0577,36.6813],["长清区",116.7402,36.5609],["章丘区",117.5348,36.7119],["济阳区",117.1699,36.9762],["莱芜区",117.6699,36.2144],["钢城区",117.8145,36.0581],["平阴县",116.4493,36.2867],["商河县",117.1502,37.3097]]],["青岛市",120.3501,36.0827,[["市南区",120.3908,36.0706],["市北区",120.3499,36.0836],["黄岛区",119.9903,35.8751],["崂山区",120.4624,36.1024],["李沧区",120.4161,36.1597],["城阳区",120.384,36.3065],["即墨区",120.4423,36.3905],["胶州市",120.0009,36.2857],["平度市",119.9538,36.7885],["莱西市",120.5214,36.8647]]],["淄博市",118.0416,36.8144,[["淄川区",117.9619,36.6471],["张店区",118.0474,36.8065],["博山区",117.8525,36.4975],["临淄区",118.3002,36.8162],["周村区",117.8452,36.8035],["桓台县",118.0954,36.9591],["高青县",117.8239,37.1691],["沂源县",118.1603,36.1861]]],["枣庄市",117.5523,34.8574,[["市中区",117.5516,34.8576],["薛城区",117.2595,34.7988],["峄城区",117.5807,34.7688],["台儿庄区",117.729,34.5659],["山亭区",117.453,35.0965],["滕州市",117.1562,35.089]]],["东营市",118.6591,37.4339,[["东营区",118.5018,37.4608],["河口区",118.5239,37.8853],["垦利区",118.5457,37.588],["利津县",118.243,37.4926],["广饶县",118.4015,37.0509]]],["烟台市",121.3861,37.5383,[["芝罘区",121.3806,37.5399],["福山区",121.2597,37.496],["牟平区",121.5967,37.3877],["莱山区",121.4437,37.4726],["蓬莱区",120.7541,37.8102],["龙口市",120.5234,37.6477],["莱阳市",120.7063,36.9765],["莱州市",119.9369,37.1822],["招远市",120.3979,37.364],["栖霞市",120.8293,37.3052],["海阳市",121.1633,36.7801]]],["潍坊市",119.1011,36.7087,[["潍城区",119.0978,36.7095],["寒亭区",119.2021,36.7717],["坊子区",119.1605,36.6542],["奎文区",119.1314,36.709],["临朐县",118.5343,36.5163],["昌乐县",118.8344,36.703],["青州市",118.4789,36.6975],["诸城市",119.3973,35.9968],["寿光市",118.7307,36.874],["安丘市",119.2011,36.4272],["高密市",119.7516,36.3774],["昌邑市",119.3885,36.8543]]],["济宁市",116.582,35.4158,[["任城区",116.59,35.4153],["兖州区",116.8235,35.5567],["微山县",117.1227,34.8102],["鱼台县",116.6447,34.9985],["金乡县",116.3048,35.0703],["嘉祥县",116.3372,35.3983],["汶上县",116.4816,35.7218],["泗水县",117.2677,35.6533],["梁山县",116.0838,35.8017],["曲阜市",116.9862,35.5929],["邹城市",116.9612,35.4056]]],["泰安市",117.123,36.1947,[["泰山区",117.1239,36.1891],["岱岳区",117.0376,36.1839],["宁阳县",116.7937,35.7676],["东平县",116.4554,35.9304],["新泰市",117.7602,35.9104],["肥城市",116.758,36.1855]]],["威海市",122.1113,37.5087,[["环翠区",122.1111,37.5097],["文登区",122.0521,37.1953],["荣成市",122.4179,37.1592],["乳山市",121.5315,36.9192]]],["日照市",119.4555,35.4287,[["东港区",119.452,35.4262],["岚山区",119.3102,35.1202],["五莲县",119.2011,35.7519],["莒县",118.8274,35.5883]]],["临沂市",118.3207,35.0658,[["兰山区",118.322,35.0621],["罗庄区",118.2792,34.9978],["河东区",118.3925,35.0854],["沂南县",118.4496,35.547],["郯城县",118.3373,34.6157],["沂水县",118.6291,35.7872],["兰陵县",118.0441,34.8563],["费县",117.9632,35.2696],["平邑县",117.6262,35.5119],["莒南县",118.8329,35.1765],["蒙阴县",117.9376,35.7126],["临沭县",118.643,34.9179]]],["德州市",116.3016,37.4532,[["德城区",116.3013,37.4531],["陵城区",116.5694,37.3323],["宁津县",116.7879,37.6489],["庆云县",117.3841,37.7768],["临邑县",116.8614,37.1916],["齐河县",116.7527,36.7952],["平原县",116.428,37.1637],["夏津县",115.998,36.9501],["武城县",116.0726,37.2087],["乐陵市",117.2105,37.7283],["禹城市",116.637,36.9342]]],["聊城市",115.9747,36.4559,[["东昌府区",115.9744,36.456],["茌平区",116.2477,36.5917],["阳谷县",115.7785,36.1137],["莘县",115.6616,36.2377],["东阿县",116.2432,36.3359],["冠县",115.4387,36.4835],["高唐县",116.224,36.8594],["临清市",115.7076,36.8423]]],["滨州市",118.0109,37.3828,[["滨城区",118.0141,37.384],["沾化区",118.1237,37.6975],["惠民县",117.5028,37.4831],["阳信县",117.5754,37.6399],["无棣县",117.6104,37.7402],["博兴县",118.117,37.1462],["邹平市",117.7308,36.8776]]],["菏泽市",115.4635,35.2469,[["牡丹区",115.4651,35.2435],["定陶区",115.5641,35.0735],["曹县",115.5439,34.8243],["单县",116.0769,34.7916],["成武县",115.892,34.9483],["巨野县",116.0835,35.3911],["郓城县",115.9334,35.5951],["鄄城县",115.5086,35.5605],["东明县",115.0924,35.2899]]]]],["山西省",112.543,37.8565,[["太原市",112.543,37.8565,[["小店区",112.558,37.8175],["迎泽区",112.5526,37.8553],["杏花岭区",112.5545,37.8788],["尖草坪区",112.4806,37.9392],["万柏林区",112.5159,37.8621],["晋源区",112.4713,37.7149],["清徐县",112.3513,37.6065],["阳曲县",112.6674,38.0583],["娄烦县",111.7873,38.0655],["古交市",112.1678,37.9078]]],["大同市",113.2883,40.0891,[["新荣区",113.1339,40.2569],["平城区",113.291,40.0745],["云冈区",113.1426,40.0041],["云州区",113.6058,40.0393],["阳高县",113.743,40.3637],["天镇县",114.0843,40.4199],["广灵县",114.2729,39.7619],["灵丘县",114.2294,39.4378],["浑源县",113.6914,39.698],["左云县",112.6997,40.0118]]],["阳泉市",113.5769,37.8607,[["城区",113.5801,37.8604],["矿区",113.5526,37.8696],["郊区",113.5802,37.9405],["平定县",113.6247,37.7998],["盂县",113.4053,38.0853]]],["长治市",113.1069,36.1909,[["潞州区",113.1074,36.1877],["上党区",113.0501,36.0523],["屯留区",112.8866,36.3142],["潞城区",113.2167,36.3322],["襄垣县",113.0435,36.5326],["平顺县",113.4321,36.2001],["黎城县",113.3806,36.5027],["壶关县",113.1996,36.1109],["长子县",112.8785,36.1197],["武乡县",112.8591,36.8342],["沁县",112.6951,36.7569],["沁源县",112.3344,36.5006]]],["晋城市",112.8452,35.498,[["城区",112.847,35.4971],["沁水县",112.1809,35.6896],["阳城县",112.4156,35.4823],["陵川县",113.2724,35.7757],["泽州县",112.8931,35.6176],["高平市",112.9246,35.7916]]],["朔州市",112.4265,39.3301,[["朔城区",112.4218,39.3234],["平鲁区",112.2885,39.5145],["山阴县",112.8097,39.5258],["应县",113.1805,39.558],["右玉县",112.4587,39.9876],["怀仁市",113.0934,39.8195]]],["晋中市",112.73,37.6958,[["榆次区",112.7336,37.6969],["太谷区",112.5479,37.4241],["榆社县",112.9671,37.0686],["左权县",113.371,37.079],["和顺县",113.5666,37.3266],["昔阳县",113.6997,37.6037],["寿阳县",113.1709,37.8904],["祁县",112.324,37.358],["平遥县",112.1675,37.1949],["灵石县",111.7663,36.8472],["介休市",111.9077,37.0274]]],["运城市",110.9982,35.0235,[["盐湖区",110.9948,35.0264],["临猗县",110.7694,35.1425],["万荣县",110.838,35.4175],["闻喜县",111.2143,35.3542],["稷山县",110.9733,35.6007],["新绛县",111.2191,35.6139],["绛县",111.5702,35.4909],["垣曲县",111.6649,35.2988],["夏县",111.2172,35.1411],["平陆县",111.2064,34.8382],["芮城县",110.6857,34.6959],["永济市",110.4425,34.8659],["河津市",110.7047,35.5974]]],["忻州市",112.727,38.4171,[["忻府区",112.7275,38.4172],["定襄县",112.9567,38.4845],["五台县",113.2522,38.725],["代县",112.9559,39.0644],["繁峙县",113.2609,39.1872],["宁武县",112.3013,39.0009],["静乐县",111.9338,38.3555],["神池县",112.1938,39.0876],["五寨县",111.8345,38.9121],["岢岚县",111.5634,38.7052],["河曲县",111.14,39.3808],["保德县",111.0792,39.0216],["偏关县",111.4938,39.4411],["原平市",112.7066,38.7285]]],["临汾市",111.5118,36.0843,[["尧都区",111.5167,36.0805],["曲沃县",111.4692,35.6415],["翼城县",111.7072,35.7388],["襄汾县",111.4365,35.8761],["洪洞县",111.6675,36.2559],["古县",111.9141,36.2687],["安泽县",112.2451,36.1461],["浮山县",111.8439,35.9716],["吉县",110.6773,36.0995],["乡宁县",110.8518,35.9757],["大宁县",110.7456,36.4638],["隰县",110.9301,36.6927],["永和县",110.6259,36.7606],["蒲县",111.0911,36.4115],["汾西县",111.5569,36.6534],["侯马市",111.3649,35.6204],["霍州市",111.7167,36.5719]]],["吕梁市",111.128,37.5236,[["离石区",111.1281,37.5232],["文水县",112.026,37.4356],["交城县",112.1526,37.5544],["兴县",111.1183,38.4634],["临县",110.9899,37.9602],["柳林县",110.8904,37.4312],["石楼县",110.8314,36.9992],["岚县",111.6651,38.2782],["方山县",111.2326,37.892],["中阳县",111.187,37.3414],["交口县",111.1769,36.9826],["孝义市",111.7751,37.144],["汾阳市",111.7788,37.2672]]]]],["广东省",113.2753,23.1278,[["广州市",113.2753,23.1278,[["荔湾区",113.2377,23.1276],["越秀区",113.2754,23.1283],["海珠区",113.2567,23.1058],["天河区",113.3299,23.1382],["白云区",113.2575,23.1649],["黄埔区",113.4453,23.1058],["番禺区",113.3591,22.9412],["花都区",113.2058,23.3946],["南沙区",113.5322,22.7975],["从化区",113.5823,23.5481],["增城区",113.8245,23.2932]]],["韶关市",113.5864,24.8044,[["武江区",113.5831,24.8032],["浈江区",113.594,24.807],["曲江区",113.6004,24.6833],["始兴县",114.0619,24.9511],["仁化县",113.7433,25.0911],["翁源县",114.1261,24.3566],["乳源瑶族自治县",113.273,24.779],["新丰县",114.202,24.0581],["乐昌市",113.3468,25.1311],["南雄市",114.3062,25.1181]]],["深圳市",114.0808,22.5497,[["罗湖区",114.1188,22.558],["福田区",114.0459,22.5437],["南山区",113.9246,22.5343],["宝安区",113.8236,22.7577],["龙岗区",114.2465,22.7243],["盐田区",114.2305,22.5579],["龙华区",114.0392,22.6947],["坪山区",114.3335,22.697],["光明区",113.931,22.7518]]],["珠海市",113.5489,22.2279,[["香洲区",113.5452,22.2742],["斗门区",113.2924,22.2119],["金湾区",113.3397,22.1418]]],["汕头市",116.7039,23.3736,[["龙湖区",116.7275,23.3763],["金平区",116.6991,23.3697],["濠江区",116.725,23.282],["潮阳区",116.5983,23.2651],["潮南区",116.4189,23.2522],["澄海区",116.7588,23.471],["南澳县",117.0223,23.4221]]],["佛山市",113.1172,23.0313,[["禅城区",113.1069,23.0222],["南海区",113.1401,23.0341],["顺德区",113.2765,22.7613],["三水区",112.8944,23.1679],["高明区",112.8771,22.8968]]],["江门市",113.0895,22.5931,[["蓬江区",113.0731,22.5995],["江海区",113.1151,22.5749],["新会区",113.0332,22.523],["台山市",112.7883,22.2536],["开平市",112.6872,22.3692],["鹤山市",112.9567,22.771],["恩平市",112.3089,22.1857]]],["湛江市",110.3605,21.2773,[["赤坎区",110.3571,21.2757],["霞山区",110.4018,21.1966],["坡头区",110.4511,21.2468],["麻章区",110.3247,21.2684],["遂溪县",110.251,21.3795],["徐闻县",110.1714,20.3284],["廉江市",110.2806,21.6138],["雷州市",110.0838,20.9109],["吴川市",110.776,21.431]]],["茂名市",110.9147,21.6625,[["茂南区",110.916,21.6632],["电白区",111.0025,21.5098],["高州市",110.8487,21.918],["化州市",110.6341,21.6577],["信宜市",110.9371,22.3557]]],["肇庆市",112.4673,23.0542,[["端州区",112.4671,23.0553],["鼎湖区",112.5603,23.1587],["高要区",112.4556,23.0303],["广宁县",112.4351,23.6339],["怀集县",112.1772,23.9157],["封开县",111.4978,23.4373],["德庆县",111.7763,23.1444],["四会市",112.6899,23.343]]],["惠州市",114.4076,23.0819,[["惠城区",114.409,23.0824],["惠阳区",114.4646,22.7912],["博罗县",114.2794,23.1702],["惠东县",114.7184,22.9858],["龙门县",114.2551,23.7265]]],["梅州市",116.1127,24.3017,[["梅江区",116.1163,24.3052],["梅县区",116.0786,24.2704],["大埔县",116.691,24.3545],["丰顺县",116.1798,23.7553],["五华县",115.7703,23.9281],["平远县",115.8872,24.5727],["蕉岭县",116.1658,24.6561],["兴宁市",115.7269,24.1408]]],["汕尾市",115.3593,22.7771,[["城区",115.3587,22.7789],["海丰县",115.3324,22.9737],["陆河县",115.6529,23.3054],["陆丰市",115.6396,22.949]]],["河源市",114.6931,23.7489,[["源城区",114.6921,23.7489],["紫金县",115.1795,23.6363],["龙川县",115.2516,24.1039],["连平县",114.4911,24.3671],["和平县",114.9368,24.4462],["东源县",114.738,23.7917]]],["阳江市",111.9701,21.862,[["江城区",111.9639,21.862],["阳东区",112.0061,21.8674],["阳西县",111.6126,21.7565],["阳春市",111.7854,22.1724]]],["清远市",113.0458,23.6875,[["清城区",113.0432,23.6915],["清新区",113.0098,23.7395],["佛冈县",113.5289,23.8695],["阳山县",112.6289,24.4733],["连山壮族瑶族自治县",112.0811,24.57],["连南瑶族自治县",112.2855,24.722],["英德市",113.3998,24.1887],["连州市",112.3738,24.7867]]],["东莞市",113.7411,23.0489,[["东莞市",113.7411,23.0489]]],["中山市",113.3769,22.5238,[["中山市",113.3769,22.5238]]],["潮州市",116.6279,23.6644,[["湘桥区",116.6293,23.6674],["潮安区",116.6748,23.4637],["饶平县",116.9973,23.6707]]],["揭阳市",116.351,23.5462,[["榕城区",116.3524,23.5379],["揭东区",116.4082,23.5723],["揭西县",115.8341,23.43],["惠来县",116.2913,23.0325],["普宁市",116.1604,23.3004]]],["云浮市",112.0391,22.9325,[["云城区",112.0394,22.9335],["云安区",112.0004,23.0758],["新兴县",112.2257,22.7061],["郁南县",111.5308,23.2405],["罗定市",111.5732,22.7684]]]]],["广西壮族自治区",108.316,22.8268,[["南宁市",108.316,22.8268,[["兴宁区",108.3162,22.8223],["青秀区",108.3421,22.8193],["江南区",108.3065,22.8024],["西乡塘区",108.3029,22.8356],["良庆区",108.3181,22.7619],["邕宁区",108.4803,22.7594],["武鸣区",108.2768,23.1599],["隆安县",107.6847,23.1775],["马山县",108.1688,23.7143],["上林县",108.6002,23.4346],["宾阳县",108.8128,23.2196],["横州市",109.2667,22.6903]]],["柳州市",109.4071,24.3173,[["城中区",109.4071,24.315],["鱼峰区",109.4108,24.3065],["柳南区",109.3913,24.2897],["柳北区",109.402,24.3618],["柳江区",109.33,24.2603],["柳城县",109.2415,24.658],["鹿寨县",109.7363,24.4863],["融安县",109.399,25.2174],["融水苗族自治县",109.2484,25.0717],["三江侗族自治县",109.6105,25.7888]]],["桂林市",110.2945,25.277,[["秀峰区",110.2879,25.2814],["叠彩区",110.2962,25.3042],["象山区",110.2803,25.2648],["七星区",110.3129,25.2571],["雁山区",110.3011,25.0805],["临桂区",110.2009,25.2491],["阳朔县",110.4901,24.7782],["灵川县",110.321,25.4113],["全州县",111.0677,25.9329],["兴安县",110.6661,25.6126],["永福县",109.9847,24.9896],["灌阳县",111.155,25.4919],["龙胜各族自治县",110.0048,25.7994],["资源县",110.638,26.0375],["平乐县",110.6383,24.6353],["恭城瑶族自治县",110.8248,24.8366],["荔浦市",110.3954,24.5005]]],["梧州市",111.2925,23.4774,[["万秀区",111.3106,23.4739],["长洲区",111.2706,23.4803],["龙圩区",111.241,23.4126],["苍梧县",111.5389,23.8479],["藤县",110.9272,23.3768],["蒙山县",110.5181,24.2027],["岑溪市",110.9933,22.9212]]],["北海市",109.115,21.4757,[["海城区",109.1032,21.4708],["银海区",109.1144,21.4473],["铁山港区",109.4462,21.5953],["合浦县",109.1965,21.6661]]],["防城港市",108.3415,21.6171,[["港口区",108.3423,21.6169],["防城区",108.3544,21.7673],["上思县",107.9782,22.1543],["东兴市",107.9663,21.5438]]],["钦州市",108.6205,21.97,[["钦南区",108.6229,21.9697],["钦北区",108.4451,22.1355],["灵山县",109.2892,22.4209],["浦北县",109.5522,22.2713]]],["贵港市",109.598,23.0965,[["港北区",109.5906,23.1106],["港南区",109.6005,23.0704],["覃塘区",109.4112,23.1353],["平南县",110.3928,23.547],["桂平市",110.0701,23.3849]]],["玉林市",110.1499,22.6341,[["玉州区",110.1504,22.6349],["福绵区",110.0496,22.5844],["容县",110.5481,22.8594],["陆川县",110.2605,22.3239],["博白县",109.9757,22.2742],["兴业县",109.8736,22.7449],["北流市",110.3435,22.7044]]],["百色市",106.6129,23.9006,[["右江区",106.6123,23.9006],["田阳区",106.9007,23.7389],["田东县",107.1201,23.6029],["德保县",106.6148,23.3243],["那坡县",105.8303,23.4035],["凌云县",106.5614,24.3487],["乐业县",106.5562,24.7853],["田林县",106.2316,24.2931],["西林县",105.092,24.4948],["隆林各族自治县",105.3391,24.7772],["靖西市",106.4139,23.1373],["平果市",107.5765,23.3233]]],["贺州市",111.5469,24.4172,[["八步区",111.5469,24.4155],["平桂区",111.5188,24.4201],["昭平县",110.8062,24.1758],["钟山县",111.2984,24.5314],["富川瑶族自治县",111.272,24.8218]]],["河池市",108.0579,24.6987,[["金城江区",108.0579,24.6984],["宜州区",108.6501,24.4952],["南丹县",107.5426,24.9862],["天峨县",107.1708,24.9888],["凤山县",107.0405,24.5474],["东兰县",107.3694,24.5121],["罗城仫佬族自治县",108.8985,24.7824],["环江毛南族自治县",108.2546,24.8305],["巴马瑶族自治县",107.2491,24.1424],["都安瑶族自治县",108.0986,23.9375],["大化瑶族自治县",107.9905,23.7423]]],["来宾市",109.2255,23.7364,[["兴宾区",109.2262,23.7356],["忻城县",108.6635,24.0677],["象州县",109.6802,23.9626],["武宣县",109.6586,23.6069],["金秀瑶族自治县",110.184,24.1377],["合山市",108.8847,23.816]]],["崇左市",107.3498,22.4069,[["江州区",107.3503,22.4075],["扶绥县",107.9077,22.6389],["宁明县",107.0636,22.134],["龙州县",106.854,22.3468],["大新县",107.1968,22.8362],["天等县",107.1384,23.0851],["凭祥市",106.7554,22.1117]]]]],["新疆维吾尔自治区",87.6149,43.7916,[["乌鲁木齐市",87.6149,43.7916,[["天山区",87.6173,43.7952],["沙依巴克区",87.5938,43.7877],["新市区",87.5578,43.8697],["水磨沟区",87.6102,43.8155],["头屯河区",87.4225,43.8745],["达坂城区",88.3071,43.3602],["米东区",87.6888,43.9597],["乌鲁木齐县",87.5025,43.9813]]],["克拉玛依市",84.8715,45.5951,[["独山子区",84.8799,44.3264],["克拉玛依区",84.8665,45.5997],["白碱滩区",85.1269,45.6879],["乌尔禾区",85.695,46.087]]],["吐鲁番市",89.1812,42.9461,[["高昌区",89.1795,42.9461],["鄯善县",90.2106,42.864],["托克逊县",88.6532,42.7922]]],["哈密市",93.5116,42.8317,[["伊州区",93.5076,42.8324],["巴里坤哈萨克自治县",93.0202,43.5973],["伊吾县",94.6916,43.2504]]],["昌吉回族自治州",87.3009,44.0133,[["昌吉市",87.301,44.0119],["阜康市",87.9809,44.151],["呼图壁县",86.8861,44.1884],["玛纳斯县",86.2151,44.3045],["奇台县",89.589,44.0209],["吉木萨尔县",89.1784,43.9958],["木垒哈萨克自治县",90.2808,43.831]]],["博尔塔拉蒙古自治州",82.0715,44.9022,[["博乐市",82.0689,44.9021],["阿拉山口市",82.5666,45.167],["精河县",82.8901,44.605],["温泉县",81.0281,44.9728]]],["巴音郭楞蒙古自治州",86.1483,41.7671,[["库尔勒市",86.1433,41.7616],["轮台县",84.2459,41.7799],["尉犁县",86.261,41.3362],["若羌县",88.166,39.0234],["且末县",85.5302,38.1386],["焉耆回族自治县",86.5676,42.0632],["和静县",86.3884,42.3157],["和硕县",86.8625,42.2677],["博湖县",86.6293,41.979]]],["阿克苏地区",80.2629,41.1697,[["阿克苏市",80.2607,41.1703],["库车市",82.9602,41.716],["温宿县",80.2411,41.2719],["沙雅县",82.7779,41.2252],["新和县",82.6082,41.5501],["拜城县",81.8671,41.795],["乌什县",79.2285,41.2149],["阿瓦提县",80.376,40.6377],["柯坪县",79.0455,40.5056]]],["克孜勒苏柯尔克孜自治州",76.1698,39.713,[["阿图什市",76.1709,39.7125],["阿克陶县",75.9423,39.1471],["阿合奇县",78.4478,40.9367],["乌恰县",75.2566,39.7163]]],["喀什地区",75.9862,39.4674,[["喀什市",75.9854,39.4676],["疏附县",75.8602,39.3782],["疏勒县",76.0505,39.3991],["英吉沙县",76.1713,38.9298],["泽普县",77.2708,38.1913],["莎车县",77.2461,38.4147],["叶城县",77.4174,37.8846],["麦盖提县",77.649,38.9035],["岳普湖县",76.7696,39.2351],["伽师县",76.7392,39.494],["巴楚县",78.5485,39.7832],["塔什库尔干塔吉克自治县",75.225,37.7755]]],["和田地区",79.9234,37.111,[["和田市",79.9256,37.1093],["和田县",79.817,37.1203],["墨玉县",79.7344,37.2716],["皮山县",78.2801,37.6163],["洛浦县",80.1819,37.0745],["策勒县",80.8014,37.0019],["于田县",81.6652,36.855],["民丰县",82.6897,37.0651]]],["伊犁哈萨克自治州",81.3149,43.9206,[["伊宁市",81.3133,43.921],["奎屯市",84.8992,44.4227],["霍尔果斯市",80.4182,44.2005],["伊宁县",81.5217,43.9768],["察布查尔锡伯自治县",81.1479,43.8375],["霍城县",80.8702,44.049],["巩留县",82.2241,43.4802],["新源县",83.2553,43.4328],["昭苏县",81.1231,43.1563],["特克斯县",81.8372,43.2136],["尼勒克县",82.5012,43.7885]]],["塔城地区",82.9825,46.7456,[["塔城市",82.9808,46.7456],["乌苏市",84.6752,44.4292],["额敏县",83.6191,46.522],["沙湾市",85.62,44.3287],["托里县",83.6017,45.9352],["裕民县",82.979,46.2021],["和布克赛尔蒙古自治县",85.7307,46.7921]]],["阿勒泰地区",88.1363,47.8471,[["阿勒泰市",88.1354,47.8476],["布尔津县",86.8592,47.7035],["富蕴县",89.5222,46.9921],["福海县",87.4913,47.112],["哈巴河县",86.416,48.0581],["青河县",90.3793,46.6713],["吉木乃县",85.8735,47.4337]]],["石河子市",86.0383,44.3047,[["石河子市",86.0383,44.3047]]],["阿拉尔市",81.2831,40.5413,[["阿拉尔市",81.2831,40.5413]]],["图木舒克市",79.0756,39.8668,[["图木舒克市",79.0756,39.8668]]],["五家渠市",87.5239,44.1663,[["五家渠市",87.5239,44.1663]]],["北屯市",87.8218,47.3521,[["北屯市",87.8218,47.3521]]],["铁门关市",85.4986,41.8259,[["铁门关市",85.4986,41.8259]]],["双河市",82.3505,44.8395,[["双河市",82.3505,44.8395]]],["可克达拉市",80.6337,43.6821,[["可克达拉市",80.6337,43.6821]]],["昆玉市",79.2852,37.2081,[["昆玉市",79.2852,37.2081]]],["胡杨河市",84.8251,44.6921,[["胡杨河市",84.8251,44.6921]]]]],["江苏省",118.7622,32.0436,[["南京市",118.7622,32.0436,[["玄武区",118.787,32.0527],["秦淮区",118.7809,32.0359],["建邺区",118.7275,32.0066],["鼓楼区",118.7645,32.069],["浦口区",118.6203,32.0606],["栖霞区",118.8035,32.1043],["雨花台区",118.7669,31.998],["江宁区",118.8456,31.9556],["六合区",118.8455,32.3429],["溧水区",119.0234,31.6549],["高淳区",118.8709,31.3293]]],["无锡市",120.2971,31.5766,[["锡山区",120.3526,31.5874],["惠山区",120.2989,31.6829],["滨湖区",120.2615,31.5522],["梁溪区",120.292,31.5776],["新吴区",120.3481,31.5528],["江阴市",120.2713,31.913],["宜兴市",119.8157,31.3665]]],["徐州市",117.179,34.263,[["鼓楼区",117.1872,34.2706],["云龙区",117.1888,34.256],["贾汪区",117.4443,34.4427],["泉山区",117.1764,34.2635],["铜山区",117.1781,34.1941],["丰县",116.5877,34.6981],["沛县",116.9318,34.7302],["睢宁县",117.9452,33.9007],["新沂市",118.3402,34.3699],["邳州市",117.9584,34.3161]]],["常州市",119.9423,31.7749,[["天宁区",119.9591,31.7817],["钟楼区",119.9437,31.7831],["新北区",119.9699,31.8267],["武进区",119.9541,31.7206],["金坛区",119.5685,31.7465],["溧阳市",119.4826,31.429]]],["苏州市",120.6154,31.3016,[["虎丘区",120.5626,31.297],["吴中区",120.6204,31.273],["相城区",120.6148,31.3988],["姑苏区",120.6181,31.3136],["吴江区",120.6374,31.1626],["常熟市",120.7441,31.6601],["张家港市",120.5391,31.8676],["昆山市",120.9539,31.384],["太仓市",121.1076,31.4543]]],["南通市",120.8604,32.0184,[["崇川区",120.8621,32.0174],["通州区",121.0685,32.0861],["如东县",121.1815,32.3138],["启东市",121.6554,31.8122],["如皋市",120.562,32.3938],["海门区",121.172,31.8954],["海安市",120.4613,32.5422]]],["连云港市",119.1732,34.601,[["连云区",119.3608,34.7403],["海州区",119.1742,34.6026],["赣榆区",119.123,34.8398],["东海县",118.761,34.524],["灌云县",119.2503,34.2997],["灌南县",119.3467,34.0937]]],["淮安市",119.0158,33.5989,[["淮安区",119.1408,33.5088],["淮阴区",119.0153,33.6238],["清江浦区",119.014,33.6046],["洪泽区",118.8627,33.2967],["涟水县",119.2606,33.7727],["盱眙县",118.4885,33.0062],["金湖县",119.0115,33.0199]]],["盐城市",120.135,33.379,[["亭湖区",120.1311,33.3853],["盐都区",120.1347,33.3427],["大丰区",120.4656,33.2011],["响水县",119.5744,34.2014],["滨海县",119.8234,33.9913],["阜宁县",119.8002,33.7872],["射阳县",120.2527,33.7751],["建湖县",119.788,33.4741],["东台市",120.3094,32.855]]],["扬州市",119.4155,32.395,[["广陵区",119.4368,32.3941],["邗江区",119.3923,32.3798],["江都区",119.5625,32.4288],["宝应县",119.3158,33.2385],["仪征市",119.1771,32.274],["高邮市",119.4384,32.787]]],["镇江市",119.4474,32.2063,[["京口区",119.4492,32.2081],["润州区",119.4094,32.2154],["丹徒区",119.4285,32.1309],["丹阳市",119.577,31.9936],["扬中市",119.8232,32.2394],["句容市",119.1618,31.9493]]],["泰州市",119.9104,32.4871,[["海陵区",119.9154,32.4906],["高港区",119.8769,32.3179],["姜堰区",120.1433,32.5104],["兴化市",119.8352,32.94],["靖江市",120.2636,32.0202],["泰兴市",120.0153,32.1708]]],["宿迁市",118.2697,33.9644,[["宿城区",118.2735,33.9391],["宿豫区",118.3244,33.9423],["沭阳县",118.7705,34.1304],["泗阳县",118.676,33.7129],["泗洪县",118.2063,33.458]]]]],["江西省",115.8873,28.6799,[["南昌市",115.8873,28.6799,[["东湖区",115.8848,28.6864],["西湖区",115.9058,28.6663],["青云谱区",115.9025,28.6391],["青山湖区",115.9442,28.6926],["新建区",115.8158,28.694],["红谷滩区",115.8532,28.7015],["南昌县",115.9376,28.5472],["安义县",115.5481,28.8446],["进贤县",116.2628,28.369]]],["景德镇市",117.2094,29.2952,[["昌江区",117.1897,29.2911],["珠山区",117.2095,29.2955],["浮梁县",117.2123,29.3549],["乐平市",117.124,28.9702]]],["萍乡市",113.8469,27.6264,[["安源区",113.8497,27.6292],["湘东区",113.7401,27.6426],["莲花县",113.9504,27.1313],["上栗县",113.7951,27.8804],["芦溪县",114.0358,27.6368]]],["九江市",115.9877,29.7146,[["濂溪区",115.9851,29.6788],["浔阳区",115.9909,29.7272],["柴桑区",115.8881,29.613],["武宁县",115.1002,29.2628],["修水县",114.5685,29.0358],["永修县",115.804,29.0212],["德安县",115.7575,29.3302],["都昌县",116.2001,29.2778],["湖口县",116.2393,29.7288],["彭泽县",116.551,29.9015],["瑞昌市",115.664,29.6793],["共青城市",115.8006,29.2507],["庐山市",116.0386,29.4587]]],["新余市",114.926,27.8143,[["渝水区",114.9191,27.8226],["分宜县",114.6703,27.8147]]],["鹰潭市",117.0287,28.2418,[["月湖区",117.0289,28.2423],["余江区",116.8179,28.2096],["贵溪市",117.2069,28.287]]],["赣州市",114.9355,25.8542,[["章贡区",114.934,25.8546],["南康区",114.7521,25.6646],["赣县区",115.0135,25.8684],["信丰县",114.9262,25.3832],["大余县",114.3571,25.3986],["上犹县",114.5358,25.7974],["崇义县",114.3023,25.6908],["安远县",115.3872,25.1372],["定南县",115.0277,24.777],["全南县",114.5268,24.7456],["宁都县",116.0139,26.4754],["于都县",115.406,25.9579],["兴国县",115.3467,26.3337],["会昌县",115.7863,25.602],["寻乌县",115.6467,24.9571],["石城县",116.3374,26.3298],["瑞金市",116.03,25.8782],["龙南市",114.7879,24.9076]]],["吉安市",114.9814,27.1151,[["吉州区",114.9824,27.1157],["青原区",115.0112,27.1092],["吉安县",114.9003,27.0436],["吉水县",115.1293,27.2166],["峡江县",115.3142,27.584],["新干县",115.394,27.7588],["永丰县",115.4303,27.3242],["泰和县",114.8966,26.7938],["遂川县",114.512,26.3271],["万安县",114.7798,26.4655],["安福县",114.609,27.3862],["永新县",114.2374,26.9481],["井冈山市",114.2793,26.7493]]],["宜春市",114.3858,27.8074,[["袁州区",114.3821,27.8032],["奉新县",115.3845,28.7037],["万载县",114.4437,28.1077],["上高县",114.9278,28.2383],["宜丰县",114.7823,28.3916],["靖安县",115.3564,28.8635],["铜鼓县",114.3648,28.5241],["丰城市",115.781,28.1949],["樟树市",115.5384,28.0593],["高安市",115.3762,28.4241]]],["抚州市",116.3533,27.987,[["临川区",116.3564,27.9851],["东乡区",116.6007,28.236],["南城县",116.6348,27.5587],["黎川县",116.9098,27.296],["南丰县",116.5283,27.2135],["崇仁县",116.054,27.764],["乐安县",115.8336,27.4235],["宜黄县",116.2182,27.5497],["金溪县",116.7739,27.9107],["资溪县",117.0609,27.7096],["广昌县",116.3224,26.8417]]],["上饶市",117.9661,28.4478,[["信州区",117.9655,28.4487],["广丰区",118.1848,28.4435],["广信区",117.9012,28.4573],["玉山县",118.2394,28.6766],["铅山县",117.7067,28.3142],["横峰县",117.6032,28.4186],["弋阳县",117.4296,28.4055],["余干县",116.6862,28.695],["鄱阳县",116.6689,28.9964],["万年县",117.0648,28.6956],["婺源县",117.8571,29.2569],["德兴市",117.5736,28.9482]]]]],["河北省",114.4964,38.0448,[["石家庄市",114.4964,38.0448,[["长安区",114.5423,38.047],["桥西区",114.4568,38.0276],["新华区",114.4598,38.0664],["井陉矿区",114.0517,38.069],["裕华区",114.5274,38.0271],["藁城区",114.8438,38.0332],["鹿泉区",114.3148,38.0933],["栾城区",114.6485,37.8863],["井陉县",114.1381,38.0328],["正定县",114.5641,38.1474],["行唐县",114.5468,38.4369],["灵寿县",114.3731,38.3058],["高邑县",114.605,37.6052],["深泽县",115.1941,38.1838],["赞皇县",114.3815,37.6593],["无极县",114.9719,38.1758],["平山县",114.1778,38.2586],["元氏县",114.5203,37.7619],["赵县",114.7694,37.7536],["辛集市",115.2114,37.9283],["晋州市",115.0387,38.0267],["新乐市",114.6798,38.3442]]],["唐山市",118.1691,39.6338,[["路南区",118.2046,39.6139],["路北区",118.1684,39.6272],["古冶区",118.448,39.7144],["开平区",118.2583,39.6749],["丰南区",118.1044,39.5616],["丰润区",118.1494,39.83],["曹妃甸区",118.4404,39.277],["滦南县",118.6756,39.5051],["乐亭县",118.8995,39.4271],["迁西县",118.2989,40.1449],["玉田县",117.7473,39.8861],["遵化市",117.9596,40.1874],["迁安市",118.6959,40.0109],["滦州市",118.6935,39.7436]]],["秦皇岛市",119.5808,39.9414,[["海港区",119.5904,39.9423],["山海关区",119.7477,39.9967],["北戴河区",119.4802,39.8238],["抚宁区",119.2345,39.8858],["青龙满族自治县",118.9485,40.4048],["昌黎县",119.1583,39.7084],["卢龙县",118.8759,39.8905]]],["邯郸市",114.4848,36.6121,[["邯山区",114.4791,36.603],["丛台区",114.4888,36.6109],["复兴区",114.4522,36.6152],["峰峰矿区",114.2039,36.4204],["肥乡区",114.7994,36.5557],["永年区",114.4903,36.7761],["临漳县",114.6051,36.3377],["成安县",114.6746,36.4438],["大名县",115.1466,36.2831],["涉县",113.667,36.5631],["磁县",114.376,36.3674],["邱县",115.1625,36.8128],["鸡泽县",114.8729,36.9147],["广平县",114.9452,36.4836],["馆陶县",115.2831,36.5393],["魏县",114.9285,36.3543],["曲周县",114.9519,36.7732],["武安市",114.1885,36.6958]]],["邢台市",114.503,37.0677,[["襄都区",114.5012,37.0637],["信都区",114.4677,37.0674],["任泽区",114.6787,37.1295],["南和区",114.6856,37.0034],["临城县",114.5009,37.4433],["内丘县",114.5056,37.2871],["柏乡县",114.6875,37.483],["隆尧县",114.7704,37.3503],["宁晋县",114.9153,37.6184],["巨鹿县",115.0327,37.217],["新河县",115.2415,37.5255],["广宗县",115.1367,37.0749],["平乡县",115.0232,37.0688],["威县",115.2668,36.9828],["清河县",115.6632,37.0596],["临西县",115.4927,36.8638],["南宫市",115.3919,37.3588],["沙河市",114.499,36.8616]]],["保定市",115.4761,38.8668,[["竞秀区",115.4644,38.8857],["莲池区",115.4948,38.8642],["满城区",115.3181,38.9505],["清苑区",115.486,38.7702],["徐水区",115.6434,39.0196],["涞水县",115.7058,39.3921],["阜平县",114.1924,38.8465],["定兴县",115.7908,39.2652],["唐县",114.9752,38.7479],["高阳县",115.7728,38.6894],["容城县",115.8604,39.0521],["涞源县",114.6865,39.3565],["望都县",115.1477,38.7066],["安新县",115.9261,38.9292],["易县",115.4949,39.3519],["曲阳县",114.698,38.6194],["蠡县",115.5777,38.496],["顺平县",115.1264,38.8442],["博野县",115.4555,38.4575],["雄县",116.1013,38.9898],["涿州市",115.9674,39.4847],["定州市",114.9853,38.517],["安国市",115.3251,38.4206],["高碑店市",115.8768,39.3268]]],["张家口市",114.878,40.8106,[["桥东区",114.8795,40.8126],["桥西区",114.876,40.8231],["宣化区",115.0566,40.6079],["下花园区",115.2746,40.4873],["万全区",114.7298,40.7637],["崇礼区",115.2752,40.9696],["张北县",114.7096,41.15],["康保县",114.6096,41.8482],["沽源县",115.6784,41.6654],["尚义县",113.971,41.0785],["蔚县",114.5767,39.8362],["阳原县",114.1607,40.1121],["怀安县",114.4157,40.6697],["怀来县",115.5146,40.4042],["涿鹿县",115.2129,40.3774],["赤城县",115.8265,40.9106]]],["承德市",117.9329,40.9747,[["双桥区",117.9329,40.9747],["双滦区",117.791,40.9581],["鹰手营子矿区",117.6548,40.5457],["承德县",118.166,40.767],["兴隆县",117.5006,40.4172],["滦平县",117.3304,40.9349],["隆化县",117.7297,41.3147],["丰宁满族自治县",116.6452,41.2082],["宽城满族自治县",118.4824,40.6065],["围场满族蒙古族自治县",117.7574,41.9473],["平泉市",118.6841,41.0039]]],["沧州市",116.8517,38.3101,[["新华区",116.8673,38.3078],["运河区",116.8343,38.3068],["沧县",117.0014,38.2191],["青县",116.8326,38.5691],["东光县",116.5364,37.8859],["海兴县",117.4904,38.1409],["盐山县",117.2237,38.0554],["肃宁县",115.83,38.4266],["南皮县",116.7034,38.0418],["吴桥县",116.3855,37.6272],["献县",116.1178,38.1888],["孟村回族自治县",117.0988,38.0571],["泊头市",116.5646,38.0729],["任丘市",116.1006,38.7056],["黄骅市",117.3374,38.3684],["河间市",116.0833,38.4406]]],["廊坊市",116.6985,39.5228,[["安次区",116.6886,39.5015],["广阳区",116.7077,39.5208],["固安县",116.2939,39.4353],["永清县",116.4921,39.3186],["香河县",117.0009,39.756],["大城县",116.635,38.6986],["文安县",116.4541,38.8659],["大厂回族自治县",116.9803,39.8881],["霸州市",116.3859,39.1162],["三河市",117.0705,39.9814]]],["衡水市",115.6601,37.7345,[["桃城区",115.689,37.7315],["冀州区",115.5734,37.5422],["枣强县",115.7205,37.5108],["武邑县",115.8867,37.8032],["武强县",115.9644,38.0364],["饶阳县",115.7205,38.232],["安平县",115.5136,38.2329],["故城县",115.961,37.3504],["景县",116.2527,37.6859],["阜城县",116.1588,37.8691],["深州市",115.5487,38.0029]]]]],["河南省",113.6593,34.7591,[["郑州市",113.6593,34.7591,[["中原区",113.6055,34.7495],["二七区",113.6394,34.7321],["管城回族区",113.6792,34.7475],["金水区",113.6799,34.7769],["上街区",113.2919,34.8096],["惠济区",113.6123,34.8297],["中牟县",114.0165,34.7229],["巩义市",112.9766,34.7533],["荥阳市",113.385,34.7899],["新密市",113.3741,34.5389],["新郑市",113.7335,34.3955],["登封市",113.0314,34.4611]]],["开封市",114.3355,34.7979,[["龙亭区",114.3474,34.8006],["顺河回族区",114.3589,34.8012],["鼓楼区",114.3426,34.7932],["禹王台区",114.3443,34.7806],["祥符区",114.4317,34.7573],["杞县",114.7649,34.5558],["通许县",114.462,34.4784],["尉氏县",114.188,34.4135],["兰考县",114.815,34.8309]]],["洛阳市",112.4282,34.664,[["老城区",112.4711,34.684],["西工区",112.437,34.6688],["瀍河回族区",112.4855,34.6858],["涧西区",112.3929,34.6552],["孟津区",112.4376,34.8273],["洛龙区",112.4504,34.6196],["新安县",112.1351,34.7296],["栾川县",111.6125,33.7849],["嵩县",112.0815,34.1328],["汝阳县",112.4676,34.1546],["宜阳县",112.1738,34.5176],["洛宁县",111.6494,34.3886],["伊川县",112.4231,34.4245],["偃师区",112.7816,34.7241]]],["平顶山市",113.3014,33.7367,[["新华区",113.2928,33.739],["卫东区",113.304,33.7407],["石龙区",112.884,33.9032],["湛河区",113.3146,33.7271],["宝丰县",113.0604,33.8677],["叶县",113.3519,33.6226],["鲁山县",112.9008,33.742],["郏县",113.2142,33.9734],["舞钢市",113.5202,33.3038],["汝州市",112.8394,34.1689]]],["安阳市",114.3464,36.1033,[["文峰区",114.3465,36.098],["北关区",114.3466,36.1096],["殷都区",114.2941,36.1089],["龙安区",114.3175,36.0955],["安阳县",114.124,36.1304],["汤阴县",114.3563,35.9222],["滑县",114.5183,35.5749],["内黄县",114.899,35.9539],["林州市",113.8176,36.0635]]],["鹤壁市",114.2895,35.7483,[["鹤山区",114.1604,35.9361],["山城区",114.1781,35.896],["淇滨区",114.288,35.7485],["浚县",114.5446,35.6716],["淇县",114.1944,35.6096]]],["新乡市",113.8781,35.3032,[["红旗区",113.8722,35.3033],["卫滨区",113.8601,35.3055],["凤泉区",113.9008,35.3804],["牧野区",113.8912,35.3136],["新乡县",113.8001,35.1906],["获嘉县",113.6511,35.2623],["原阳县",113.96,35.0548],["延津县",114.195,35.15],["封丘县",114.4175,35.0411],["卫辉市",114.0596,35.4045],["辉县市",113.7964,35.4616],["长垣市",114.6682,35.1967]]],["焦作市",113.2319,35.2395,[["解放区",113.2197,35.2418],["中站区",113.169,35.2366],["马村区",113.3152,35.2658],["山阳区",113.2613,35.2153],["修武县",113.4409,35.2303],["博爱县",113.0628,35.1707],["武陟县",113.4018,35.0993],["温县",113.0726,34.9419],["沁阳市",112.9285,35.0898],["孟州市",112.7809,34.9105]]],["濮阳市",115.0354,35.7682,[["华龙区",115.0259,35.7605],["清丰县",115.1012,35.9023],["南乐县",115.1984,36.0752],["范县",115.4984,35.852],["台前县",115.8501,35.9966],["濮阳县",115.018,35.7104]]],["许昌市",113.8201,34.0245,[["魏都区",113.8224,34.0286],["建安区",113.837,34.0066],["鄢陵县",114.1826,34.1018],["襄城县",113.4869,33.8574],["禹州市",113.465,34.1557],["长葛市",113.7628,34.2206]]],["漯河市",114.0205,33.5773,[["源汇区",114.012,33.5669],["郾城区",114.0109,33.5904],["召陵区",114.0457,33.569],["舞阳县",113.6047,33.4381],["临颍县",113.9331,33.8077]]],["三门峡市",111.1881,34.7783,[["湖滨区",111.1889,34.7791],["陕州区",111.0978,34.7211],["渑池县",111.7568,34.7645],["卢氏县",111.0467,34.0553],["义马市",111.8634,34.7481],["灵宝市",110.8804,34.5227]]],["南阳市",112.5351,33.0011,[["宛城区",112.5388,32.9969],["卧龙区",112.5229,32.9919],["南召县",112.4294,33.4901],["方城县",113.0048,33.2568],["西峡县",111.4797,33.3047],["镇平县",112.2268,33.0385],["内乡县",111.8379,33.0484],["淅川县",111.483,33.1379],["社旗县",112.9324,33.0581],["唐河县",112.8326,32.6901],["新野县",112.3595,32.526],["桐柏县",113.3998,32.3691],["邓州市",112.0866,32.6836]]],["商丘市",115.645,34.4384,[["梁园区",115.6491,34.4379],["睢阳区",115.6483,34.3919],["民权县",115.1423,34.6494],["睢县",115.0642,34.4295],["宁陵县",115.3143,34.4504],["柘城县",115.3017,34.0766],["虞城县",115.8584,34.401],["夏邑县",116.1343,34.2421],["永城市",116.4442,33.9326]]],["信阳市",114.0691,32.1252,[["浉河区",114.0691,32.1252],["平桥区",114.1202,32.1003],["罗山县",114.5281,32.2054],["光山县",114.8984,32.0127],["新县",114.8719,31.6373],["商城县",115.4006,31.8018],["固始县",115.662,32.1853],["潢川县",115.0445,32.136],["淮滨县",115.4097,32.4546],["息县",114.7353,32.3469]]],["周口市",114.6443,33.622,[["川汇区",114.6468,33.6165],["淮阳区",114.8648,33.7342],["扶沟县",114.3861,34.0553],["西华县",114.5246,33.7859],["商水县",114.604,33.5456],["沈丘县",115.0726,33.3969],["郸城县",115.1833,33.6453],["太康县",114.8484,34.0668],["鹿邑县",115.4807,33.8625],["项城市",114.8942,33.4449]]],["驻马店市",114.0188,32.982,[["驿城区",114.0233,32.9794],["西平县",114.0209,33.3839],["上蔡县",114.2612,33.2664],["平舆县",114.6318,32.9577],["正阳县",114.3837,32.6037],["确山县",114.0208,32.8035],["泌阳县",113.3198,32.7271],["汝南县",114.3537,33.0063],["遂平县",113.9979,33.1488],["新蔡县",114.9699,32.752]]],["济源市",112.5841,35.0912,[["济源市",112.5841,35.0912]]]]],["浙江省",120.1489,30.2898,[["杭州市",120.1489,30.2898,[["上城区",120.1668,30.2526],["拱墅区",120.1453,30.317],["西湖区",120.1427,30.2752],["滨江区",120.2061,30.209],["萧山区",120.2662,30.1654],["余杭区",119.9743,30.2762],["富阳区",119.9453,30.0525],["临安区",119.7102,30.2336],["临平区",120.2949,30.4214],["钱塘区",120.4896,30.3253],["桐庐县",119.6802,29.8],["淳安县",119.0391,29.6066],["建德市",119.274,29.4748]]],["宁波市",121.5456,29.871,[["海曙区",121.5355,29.877],["江北区",121.5551,29.891],["北仑区",121.8272,29.912],["镇海区",121.7089,29.9546],["鄞州区",121.5543,29.8343],["奉化区",121.4064,29.6646],["象山县",121.8731,29.4729],["宁海县",121.4281,29.3023],["余姚市",121.1518,30.0477],["慈溪市",121.2437,30.1796]]],["温州市",120.6681,28.0039,[["鹿城区",120.6702,28.0067],["龙湾区",120.7594,27.9735],["瓯海区",120.6332,28.0098],["洞头区",121.1519,27.8391],["永嘉县",120.6869,28.1572],["平阳县",120.5605,27.6727],["苍南县",120.4019,27.5108],["文成县",120.0878,27.7922],["泰顺县",119.7116,27.5605],["瑞安市",120.6422,27.7827],["乐清市",120.9631,28.1194],["龙港市",120.5491,27.5815]]],["嘉兴市",120.7465,30.7649,[["南湖区",120.7456,30.7669],["秀洲区",120.7161,30.7656],["嘉善县",120.9177,30.8438],["海盐县",120.9379,30.5248],["海宁市",120.6846,30.528],["平湖市",121.0103,30.7012],["桐乡市",120.5469,30.6316]]],["湖州市",120.0975,30.8693,[["吴兴区",120.0966,30.8693],["南浔区",120.4126,30.8748],["德清县",119.963,30.5374],["长兴县",119.9055,31.0071],["安吉县",119.683,30.6344]]],["绍兴市",120.578,29.9998,[["越城区",120.5812,29.9996],["柯桥区",120.4717,30.0804],["上虞区",120.8701,30.0194],["新昌县",120.9016,29.5039],["诸暨市",120.2399,29.7161],["嵊州市",120.8248,29.5892]]],["金华市",119.6448,29.0925,[["婺城区",119.6479,29.0856],["金东区",119.6765,29.0987],["武义县",119.8145,28.8996],["浦江县",119.8889,29.454],["磐安县",120.4407,29.0553],["兰溪市",119.4554,29.2127],["义乌市",120.0702,29.3094],["东阳市",120.2289,29.2652],["永康市",120.0317,28.8982]]],["衢州市",118.8679,28.9448,[["柯城区",118.8683,28.9477],["衢江区",118.9528,28.9762],["常山县",118.5168,28.9031],["开化县",118.4092,29.1391],["龙游县",119.1674,29.0342],["江山市",118.6231,28.738]]],["舟山市",122.1025,30.0183,[["定海区",122.1041,30.0187],["普陀区",122.2978,29.948],["岱山县",122.1969,30.2453],["嵊泗县",122.4535,30.7293]]],["台州市",121.4242,28.6643,[["椒江区",121.4266,28.6791],["黄岩区",121.2579,28.648],["路桥区",121.3685,28.5848],["三门县",121.372,29.1216],["天台县",121.0269,29.1438],["仙居县",120.7309,28.8522],["温岭市",121.3692,28.3718],["临海市",121.1268,28.8483],["玉环市",121.2282,28.1317]]],["丽水市",119.9174,28.4554,[["莲都区",119.9179,28.4545],["青田县",120.2876,28.1385],["缙云县",120.0743,28.6572],["遂昌县",119.2709,28.5956],["松阳县",119.4803,28.4531],["云和县",119.5648,28.1145],["庆元县",119.0622,27.6213],["景宁畲族自治县",119.6301,27.9807],["龙泉市",119.1272,28.0723]]]]],["海南省",110.3268,20.034,[["海口市",110.3268,20.034,[["秀英区",110.2781,20.0103],["龙华区",110.326,20.0331],["琼山区",110.3503,20.003],["美兰区",110.3521,20.0327]]],["三亚市",109.5042,18.2496,[["海棠区",109.7566,18.4092],["吉阳区",109.508,18.2491],["天涯区",109.5023,18.249],["崖州区",109.1702,18.3538]]],["三沙市",112.3439,16.8327,[["西沙区",112.3337,16.8326],["南沙区",112.8867,9.5456]]],["儋州市",109.5728,19.5195,[["儋州市",109.5728,19.5195]]],["五指山市",109.5126,18.7787,[["五指山市",109.5126,18.7787]]],["琼海市",110.4624,19.2476,[["琼海市",110.4624,19.2476]]],["文昌市",110.7495,19.6148,[["文昌市",110.7495,19.6148]]],["万宁市",110.3844,18.7978,[["万宁市",110.3844,18.7978]]],["东方市",108.6502,19.1038,[["东方市",108.6502,19.1038]]],["定安县",110.3448,19.6867,[["定安县",110.3448,19.6867]]],["屯昌县",110.0984,19.3645,[["屯昌县",110.0984,19.3645]]],["澄迈县",110.0029,19.739,[["澄迈县",110.0029,19.739]]],["临高县",109.6835,19.9104,[["临高县",109.6835,19.9104]]],["白沙黎族自治县",109.4483,19.2262,[["白沙黎族自治县",109.4483,19.2262]]],["昌江黎族自治县",109.0492,19.2626,[["昌江黎族自治县",109.0492,19.2626]]],["乐东黎族自治县",109.1713,18.7492,[["乐东黎族自治县",109.1713,18.7492]]],["陵水黎族自治县",110.0329,18.5066,[["陵水黎族自治县",110.0329,18.5066]]],["保亭黎族苗族自治县",109.6983,18.6382,[["保亭黎族苗族自治县",109.6983,18.6382]]],["琼中黎族苗族自治县",109.8359,19.0374,[["琼中黎族苗族自治县",109.8359,19.0374]]]]],["湖北省",114.2931,30.5868,[["武汉市",114.2931,30.5868,[["江岸区",114.2976,30.5973],["江汉区",114.2777,30.5812],["硚口区",114.2592,30.5731],["汉阳区",114.2604,30.5518],["武昌区",114.3019,30.549],["青山区",114.3915,30.6365],["洪山区",114.3952,30.5066],["东西湖区",114.1368,30.6248],["汉南区",114.0755,30.312],["蔡甸区",114.0237,30.5846],["江夏区",114.3085,30.3515],["黄陂区",114.3685,30.8763],["新洲区",114.7969,30.8445]]],["黄石市",115.0716,30.2224,[["黄石港区",115.0847,30.2144],["西塞山区",115.0879,30.2077],["下陆区",114.9706,30.1804],["铁山区",114.8963,30.2087],["阳新县",115.2076,29.8441],["大冶市",114.9697,30.1014]]],["十堰市",110.7826,32.6491,[["茅箭区",110.7809,32.6466],["张湾区",110.767,32.6547],["郧阳区",110.8068,32.8404],["郧西县",110.4211,32.9932],["竹山县",110.2245,32.2281],["竹溪县",109.7122,32.3176],["房县",110.7367,32.0572],["丹江口市",111.5079,32.541]]],["宜昌市",111.2852,30.7051,[["西陵区",111.2898,30.7049],["伍家岗区",111.3015,30.6815],["点军区",111.2625,30.6948],["猇亭区",111.4217,30.5331],["夷陵区",111.321,30.7725],["远安县",111.6377,31.062],["兴山县",110.7493,31.3501],["秭归县",110.9715,30.8264],["长阳土家族自治县",111.1929,30.469],["五峰土家族自治县",110.67,30.2019],["宜都市",111.4485,30.3897],["当阳市",111.7876,30.8269],["枝江市",111.746,30.4279]]],["襄阳市",112.1381,32.0444,[["襄城区",112.1443,32.0171],["樊城区",112.1335,32.0606],["襄州区",112.1915,32.0876],["南漳县",111.8387,31.7791],["谷城县",111.6344,32.265],["保康县",111.2565,31.8756],["老河口市",111.6699,32.3877],["枣阳市",112.7594,32.1252],["宜城市",112.2556,31.7113]]],["鄂州市",114.8856,30.3992,[["梁子湖区",114.6768,30.1008],["华容区",114.7362,30.5369],["鄂城区",114.885,30.3994]]],["荆门市",112.1984,31.0376,[["东宝区",112.199,31.0357],["掇刀区",112.1926,30.983],["沙洋县",112.5897,30.7062],["钟祥市",112.5817,31.1679],["京山市",113.1085,31.0245]]],["孝感市",113.9212,30.9289,[["孝南区",113.9204,30.9284],["孝昌县",113.9833,31.2538],["大悟县",114.1205,31.5674],["云梦县",113.7448,31.0239],["应城市",113.5681,30.9415],["安陆市",113.6846,31.2639],["汉川市",113.8297,30.6547]]],["荆州市",112.2324,30.3294,[["沙市区",112.2517,30.3185],["荆州区",112.1896,30.3532],["公安县",112.2245,30.0616],["监利市",112.8988,29.8228],["江陵县",112.4115,30.0363],["石首市",112.403,29.7188],["洪湖市",113.4644,29.8154],["松滋市",111.7724,30.1786]]],["黄冈市",114.8743,30.4504,[["黄州区",114.8739,30.4501],["团风县",114.867,30.6383],["红安县",114.61,31.2871],["罗田县",115.3934,30.7839],["英山县",115.6723,30.7383],["浠水县",115.2581,30.4573],["蕲春县",115.4285,30.2373],["黄梅县",115.9376,30.0778],["麻城市",115.02,31.18],["武穴市",115.5573,29.852]]],["咸宁市",114.3235,29.8353,[["咸安区",114.3285,29.8272],["嘉鱼县",113.9161,29.9761],["通城县",113.8086,29.2489],["崇阳县",114.0443,29.5435],["通山县",114.4879,29.607],["赤壁市",113.8783,29.7196]]],["随州市",113.3676,31.7194,[["曾都区",113.3683,31.7194],["随县",113.2953,31.8563],["广水市",113.8209,31.6199]]],["恩施土家族苗族自治州",109.4821,30.2857,[["恩施市",109.4819,30.285],["利川市",108.9391,30.297],["建始县",109.7189,30.6042],["巴东县",110.3316,31.0436],["宣恩县",109.478,29.9912],["咸丰县",109.1456,29.6815],["来凤县",109.4034,29.5095],["鹤峰县",110.0287,29.8898]]],["仙桃市",113.4479,30.3674,[["仙桃市",113.4479,30.3674]]],["潜江市",112.8913,30.4239,[["潜江市",112.8913,30.4239]]],["天门市",113.1598,30.6554,[["天门市",113.1598,30.6554]]],["神农架林区",110.6664,31.7466,[["神农架林区",110.6664,31.7466]]]]],["湖南省",112.9767,28.1975,[["长沙市",112.9767,28.1975,[["芙蓉区",112.9825,28.1965],["天心区",112.9675,28.1958],["岳麓区",112.9062,28.2166],["开福区",112.9799,28.2047],["雨花区",113.0106,28.1132],["望城区",112.814,28.3509],["长沙县",113.0742,28.2411],["浏阳市",113.6278,28.1446],["宁乡市",112.5478,28.2574]]],["株洲市",113.1459,27.839,[["荷塘区",113.1568,27.8362],["芦淞区",113.1494,27.8304],["石峰区",113.1071,27.8751],["天元区",113.1304,27.8301],["渌口区",113.1404,27.709],["攸县",113.34,27.0033],["茶陵县",113.5411,26.7931],["炎陵县",113.7715,26.4929],["醴陵市",113.5015,27.6612]]],["湘潭市",112.9386,27.8332,[["雨湖区",112.902,27.8643],["岳塘区",112.9223,27.8323],["湘潭县",112.9474,27.782],["湘乡市",112.5198,27.7383],["韶山市",112.5231,27.9261]]],["衡阳市",112.6025,26.904,[["珠晖区",112.6211,26.8946],["雁峰区",112.607,26.8973],["石鼓区",112.6024,26.9075],["蒸湘区",112.5654,26.8945],["南岳区",112.7287,27.2439],["衡阳县",112.374,26.9656],["衡南县",112.6721,26.7435],["衡山县",112.8644,27.2383],["衡东县",112.945,27.087],["祁东县",112.1055,26.7904],["耒阳市",112.8419,26.4177],["常宁市",112.3912,26.41]]],["邵阳市",111.4637,27.2411,[["双清区",111.4742,27.2433],["大祥区",111.4574,27.2368],["北塔区",111.4467,27.2489],["新邵县",111.4542,27.3146],["邵阳县",111.2704,26.9931],["隆回县",111.0335,27.1193],["洞口县",110.5746,27.0659],["绥宁县",110.1503,26.584],["新宁县",110.8543,26.4425],["城步苗族自治县",110.3085,26.3669],["武冈市",110.6322,26.7357],["邵东市",111.7376,27.2606]]],["岳阳市",113.1269,29.3728,[["岳阳楼区",113.1148,29.3693],["云溪区",113.268,29.476],["君山区",112.9983,29.4407],["岳阳县",113.1101,29.1475],["华容县",112.5539,29.5269],["湘阴县",112.8843,28.6809],["平江县",113.5883,28.7049],["汨罗市",113.0735,28.8061],["临湘市",113.4449,29.4741]]],["常德市",111.6858,29.0433,[["武陵区",111.6851,29.0435],["鼎城区",111.6797,29.0175],["安乡县",112.1665,29.4171],["汉寿县",111.963,28.9105],["澧县",111.756,29.6453],["临澧县",111.6401,29.4461],["桃源县",111.4789,28.9058],["石门县",111.3733,29.5872],["津市市",111.8741,29.6337]]],["张家界市",110.475,29.1303,[["永定区",110.4796,29.1288],["武陵源区",110.5428,29.3507],["慈利县",111.1271,29.4264],["桑植县",110.1591,29.4026]]],["益阳市",112.3493,28.5732,[["资阳区",112.3252,28.5959],["赫山区",112.3552,28.5715],["南县",112.4046,29.3747],["桃江县",112.134,28.5242],["安化县",111.2164,28.3808],["沅江市",112.3553,28.8427]]],["郴州市",113.0265,25.7965,[["北湖区",113.0266,25.7956],["苏仙区",113.0331,25.7961],["桂阳县",112.7291,25.7404],["宜章县",112.9426,25.3973],["永兴县",113.1091,26.1325],["嘉禾县",112.3651,25.5901],["临武县",112.5595,25.2821],["汝城县",113.6804,25.5567],["桂东县",113.9408,26.0773],["安仁县",113.2666,26.712],["资兴市",113.2313,25.9773]]],["永州市",111.6028,26.4381,[["零陵区",111.6211,26.2268],["冷水滩区",111.6019,26.438],["祁阳市",111.852,26.5895],["东安县",111.3076,26.4006],["双牌县",111.6568,25.9626],["道县",111.5864,25.5215],["江永县",111.3414,25.2709],["宁远县",111.9393,25.5872],["蓝山县",112.1888,25.3781],["新田县",112.215,25.91],["江华瑶族自治县",111.5721,25.1856]]],["怀化市",109.9736,27.5535,[["鹤城区",109.9776,27.5518],["中方县",109.9435,27.4408],["沅陵县",110.3942,28.4587],["辰溪县",110.1922,28.0088],["溆浦县",110.5887,27.9073],["会同县",109.7162,26.8743],["麻阳苗族自治县",109.7982,27.8694],["新晃侗族自治县",109.1699,27.3631],["芷江侗族自治县",109.6832,27.4414],["靖州苗族侗族自治县",109.6866,26.577],["通道侗族自治县",109.7788,26.1617],["洪江市",109.8272,27.2053]]],["娄底市",112.0029,27.7314,[["娄星区",112.0029,27.7299],["双峰县",112.1927,27.4624],["新化县",111.3013,27.7407],["冷水江市",111.429,27.6889],["涟源市",111.6654,27.6957]]],["湘西土家族苗族自治州",109.735,28.3177,[["吉首市",109.7335,28.3182],["泸溪县",110.2097,28.2179],["凤凰县",109.5947,27.9519],["花垣县",109.4743,28.5846],["保靖县",109.6468,28.713],["古丈县",109.945,28.6204],["永顺县",109.8487,29.0012],["龙山县",109.4363,29.456]]]]],["澳门特别行政区",113.544,22.2019,[["澳门特别行政区",113.544,22.2019,[["花地玛堂区",113.5478,22.2108],["花王堂区",113.5439,22.2022],["望德堂区",113.5451,22.1967],["大堂区",113.5486,22.1915],["风顺堂区",113.5368,22.1903],["嘉模堂区",113.5536,22.1567],["路凼填海区",113.5646,22.1396],["圣方济各堂区",113.5549,22.1264]]]]],["甘肃省",103.8211,36.0583,[["兰州市",103.8211,36.0583,[["城关区",103.8386,36.0495],["七里河区",103.7818,36.067],["西固区",103.6201,36.1008],["安宁区",103.7215,36.1035],["红古区",102.86,36.3445],["永登县",103.2599,36.7344],["皋兰县",103.9469,36.3315],["榆中县",104.1122,35.8445]]],["嘉峪关市",98.2767,39.7857,[["嘉峪关市",98.2767,39.7857]]],["金昌市",102.1859,38.5138,[["金川区",102.1857,38.5134],["永昌县",101.9701,38.2471]]],["白银市",104.1709,36.5456,[["白银区",104.1715,36.5456],["平川区",104.8161,36.7292],["靖远县",104.6841,36.5615],["会宁县",105.0508,35.6927],["景泰县",104.0635,37.193]]],["天水市",105.7211,34.5798,[["秦州区",105.7205,34.58],["麦积区",105.8938,34.565],["清水县",106.1356,34.7539],["秦安县",105.6695,34.8635],["甘谷县",105.3286,34.7484],["武山县",104.8888,34.7233],["张家川回族自治县",106.2083,34.9941]]],["武威市",102.633,37.9297,[["凉州区",102.6328,37.93],["民勤县",103.0882,38.624],["古浪县",102.8962,37.4703],["天祝藏族自治县",103.1396,36.9713]]],["张掖市",100.4538,38.9323,[["甘州区",100.4532,38.9311],["肃南裕固族自治县",99.6159,38.837],["民乐县",100.815,38.4342],["临泽县",100.1647,39.1514],["高台县",99.8152,39.3756],["山丹县",101.0863,38.7842]]],["平凉市",106.6804,35.5432,[["崆峒区",106.6799,35.5422],["泾川县",107.3602,35.3356],["灵台县",107.6159,35.065],["崇信县",107.0265,35.305],["庄浪县",106.0377,35.204],["静宁县",105.7295,35.5256],["华亭市",106.6452,35.2161]]],["酒泉市",98.5102,39.7432,[["肃州区",98.5106,39.7431],["金塔县",98.9023,39.9824],["瓜州县",95.7796,40.5157],["肃北蒙古族自治县",94.8763,39.5117],["阿克塞哈萨克族自治县",94.3363,39.6308],["玉门市",97.0365,40.2859],["敦煌市",94.6632,40.1405]]],["庆阳市",107.6336,35.7346,[["西峰区",107.6341,35.7341],["庆城县",107.881,36.0138],["环县",107.3038,36.5692],["华池县",107.9814,36.4574],["合水县",108.0149,35.8191],["正宁县",108.3561,35.4909],["宁县",107.9165,35.5025],["镇原县",107.1909,35.678]]],["定西市",104.6236,35.5801,[["安定区",104.6231,35.5803],["通渭县",105.2465,35.2096],["陇西县",104.6349,35.0045],["渭源县",104.2091,35.1338],["临洮县",103.8599,35.3769],["漳县",104.4639,34.8496],["岷县",104.0373,34.4404]]],["陇南市",104.9265,33.3906,[["武都区",104.927,33.3901],["成县",105.7305,33.7415],["文县",104.6797,32.9443],["宕昌县",104.3916,34.0441],["康县",105.6059,33.3303],["西和县",105.2961,34.0153],["礼县",105.1781,34.1908],["徽县",106.0814,33.7692],["两当县",106.3028,33.9123]]],["临夏回族自治州",103.2098,35.5998,[["临夏市",103.2094,35.5998],["临夏县",102.9919,35.4928],["康乐县",103.7074,35.3725],["永靖县",103.3175,35.9391],["广河县",103.574,35.4823],["和政县",103.3479,35.4263],["东乡族自治县",103.387,35.664],["积石山保安族东乡族撒拉族自治县",102.8757,35.7134]]],["甘南藏族自治州",102.9093,34.9875,[["合作市",102.9098,34.9871],["临潭县",103.3506,34.6928],["卓尼县",103.5062,34.5895],["舟曲县",104.3675,33.7844],["迭部县",103.2188,34.0569],["玛曲县",102.0738,33.9995],["碌曲县",102.4867,34.5909],["夏河县",102.5191,35.2016]]]]],["福建省",119.3014,26.0784,[["福州市",119.3014,26.0784,[["鼓楼区",119.2945,26.0854],["台江区",119.3053,26.0617],["仓山区",119.3161,26.0419],["马尾区",119.4539,25.9949],["晋安区",119.3237,26.0819],["长乐区",119.5062,25.9637],["闽侯县",119.1402,26.1516],["连江县",119.5338,26.2054],["罗源县",119.5481,26.4907],["闽清县",118.8638,26.2272],["永泰县",118.9345,25.868],["平潭县",119.7867,25.5065],["福清市",119.3721,25.7231]]],["厦门市",118.1053,24.4931,[["思明区",118.0829,24.4647],["海沧区",118.0314,24.4952],["湖里区",118.1045,24.5154],["集美区",118.0959,24.5755],["同安区",118.1455,24.732],["翔安区",118.2381,24.6403]]],["莆田市",119.0028,25.4338,[["城厢区",118.9963,25.4365],["涵江区",119.1142,25.4619],["荔城区",119.0153,25.4328],["秀屿区",119.0877,25.3187],["仙游县",118.6897,25.3594]]],["三明市",117.6301,26.2689,[["三元区",117.6026,26.2376],["明溪县",117.1968,26.3607],["清流县",116.8111,26.1809],["宁化县",116.6551,26.2633],["大田县",117.8445,25.6938],["尤溪县",118.1837,26.1724],["沙县区",117.7841,26.4007],["将乐县",117.4684,26.732],["泰宁县",117.1724,26.9013],["建宁县",116.8411,26.8349],["永安市",117.3592,25.977]]],["泉州市",118.585,24.9119,[["鲤城区",118.5845,24.9106],["丰泽区",118.6007,24.899],["洛江区",118.6658,24.9441],["泉港区",118.9078,25.1298],["惠安县",118.7943,25.0316],["安溪县",118.1812,25.0596],["永春县",118.2902,25.3235],["德化县",118.2382,25.4918],["金门县",118.3185,24.4392],["石狮市",118.624,24.735],["晋江市",118.5729,24.8103],["南安市",118.3821,24.9621]]],["漳州市",117.657,24.5138,[["芗城区",117.6517,24.5129],["龙文区",117.6666,24.5186],["云霄县",117.3359,23.953],["漳浦县",117.6093,24.1208],["诏安县",117.1712,23.7133],["长泰区",117.751,24.6243],["东山县",117.4226,23.7052],["南靖县",117.3604,24.5191],["平和县",117.3086,24.3689],["华安县",117.5314,25.0043],["龙海区",117.8125,24.4482]]],["南平市",118.1735,26.6389,[["延平区",118.1739,26.6394],["建阳区",118.1175,27.3351],["顺昌县",117.8027,26.7963],["浦城县",118.5321,27.9238],["光泽县",117.3326,27.5459],["松溪县",118.7787,27.529],["政和县",118.854,27.3688],["邵武市",117.4864,27.3412],["武夷山市",118.0276,27.7549],["建瓯市",118.3168,27.0383]]],["龙岩市",117.0249,25.0943,[["新罗区",117.0258,25.0945],["永定区",116.728,24.7233],["长汀县",116.3562,25.8451],["上杭县",116.42,25.0527],["武平县",116.096,25.0913],["连城县",116.752,25.7114],["漳平市",117.4155,25.2942]]],["宁德市",119.5224,26.6627,[["蕉城区",119.5226,26.6627],["霞浦县",120.0008,26.8854],["古田县",118.7384,26.5809],["屏南县",118.9828,26.9142],["寿宁县",119.5019,27.461],["周宁县",119.3333,27.1063],["柘荣县",119.8939,27.2396],["福安市",119.6462,27.0877],["福鼎市",120.2155,27.3221]]]]],["西藏自治区",91.1307,29.6631,[["拉萨市",91.1307,29.6631,[["城关区",91.1314,29.6622],["堆龙德庆区",91.0015,29.6502],["达孜区",91.3495,29.6731],["林周县",91.2605,29.8986],["当雄县",91.102,30.4775],["尼木县",90.1638,29.4342],["曲水县",90.7367,29.3529],["墨竹工卡县",91.7299,29.8375]]],["日喀则市",88.8831,29.2708,[["桑珠孜区",88.8846,29.2703],["南木林县",89.097,29.6832],["江孜县",89.6031,28.9124],["定日县",87.1213,28.66],["萨迦县",88.0205,28.9044],["拉孜县",87.6351,29.0885],["昂仁县",87.2333,29.2978],["谢通门县",88.2582,29.4346],["白朗县",89.2614,29.1098],["仁布县",89.8414,29.2335],["康马县",89.6814,28.5584],["定结县",87.7653,28.3677],["仲巴县",84.0303,29.7712],["亚东县",88.9048,27.4865],["吉隆县",85.2961,28.8558],["聂拉木县",85.9799,28.1597],["萨嘎县",85.2324,29.3313],["岗巴县",88.5168,28.2781]]],["昌都市",97.1779,31.1392,[["卡若区",97.1777,31.1394],["江达县",98.2179,31.5018],["贡觉县",98.2708,30.8618],["类乌齐县",96.6011,31.2156],["丁青县",95.597,31.4132],["察雅县",97.5654,30.6559],["八宿县",96.9178,30.0564],["左贡县",97.8402,29.6742],["芒康县",98.5962,29.6896],["洛隆县",95.8227,30.7447],["边坝县",94.7066,30.9365]]],["林芝市",94.3612,29.6574,[["巴宜区",94.3598,29.6564],["工布江达县",93.2453,29.8873],["米林县",94.2126,29.2168],["墨脱县",95.3311,29.3286],["波密县",95.7673,29.8616],["察隅县",97.4644,28.6636],["朗县",93.0721,29.0476]]],["山南市",91.7653,29.2391,[["乃东区",91.764,29.2392],["扎囊县",91.3365,29.2494],["贡嘎县",90.984,29.2922],["桑日县",92.0146,29.2628],["琼结县",91.6826,29.0285],["曲松县",92.2,29.0668],["措美县",91.4308,28.4408],["洛扎县",90.8571,28.3895],["加查县",92.5903,29.1442],["隆子县",92.4623,28.412],["错那县",91.9592,27.9954],["浪卡子县",90.3971,28.9715]]],["那曲市",92.0589,31.4782,[["色尼区",92.0606,31.478],["嘉黎县",93.2317,30.6436],["比如县",93.6792,31.4823],["聂荣县",92.3026,32.1103],["安多县",91.6806,32.2629],["申扎县",88.7075,30.9317],["索县",93.7837,31.8886],["班戈县",90.0099,31.397],["巴青县",94.0527,31.9209],["尼玛县",87.2341,31.7874],["双湖县",88.8364,33.1893]]],["阿里地区",80.1033,32.5057,[["普兰县",81.1751,30.2948],["札达县",79.8012,31.4812],["噶尔县",80.1028,32.5059],["日土县",79.7298,33.3847],["革吉县",81.1403,32.3917],["改则县",84.0598,32.3045],["措勤县",85.1569,31.0193]]]]],["贵州省",106.7097,26.5819,[["贵阳市",106.7097,26.5819,[["南明区",106.7122,26.5773],["云岩区",106.7096,26.5865],["花溪区",106.6671,26.414],["乌当区",106.7583,26.6344],["白云区",106.6295,26.6805],["观山湖区",106.6228,26.65],["开阳县",106.9655,27.0603],["息烽县",106.7339,27.0961],["修文县",106.5957,26.8443],["清镇市",106.4665,26.5547]]],["六盘水市",104.8442,26.5883,[["钟山区",104.8437,26.5885],["六枝特区",105.4708,26.214],["水城区",104.9542,26.5441],["盘州市",104.466,25.7099]]],["遵义市",106.9334,27.7101,[["红花岗区",106.9399,27.6979],["汇川区",106.9334,27.7101],["播州区",106.8278,27.5387],["桐梓县",106.8227,28.1351],["绥阳县",107.1867,27.9547],["正安县",107.4373,28.5535],["道真仡佬族苗族自治县",107.6011,28.8834],["务川仡佬族苗族自治县",107.8837,28.5251],["凤冈县",107.7177,27.9643],["湄潭县",107.4814,27.7692],["余庆县",107.8885,27.2251],["习水县",106.1972,28.3312],["赤水市",105.6946,28.5905],["仁怀市",106.4086,27.8066]]],["安顺市",105.9289,26.2491,[["西秀区",105.9428,26.2519],["平坝区",106.2564,26.4095],["普定县",105.7421,26.3092],["镇宁布依族苗族自治县",105.7652,26.0594],["关岭布依族苗族自治县",105.6153,25.9476],["紫云苗族布依族自治县",106.0808,25.7544]]],["毕节市",105.2818,27.3051,[["七星关区",105.2816,27.3055],["大方县",105.606,27.1471],["黔西市",106.0346,27.0283],["金沙县",106.2185,27.463],["织金县",105.7655,26.672],["纳雍县",105.3719,26.7732],["威宁彝族回族苗族自治县",104.2843,26.8626],["赫章县",104.7239,27.1227]]],["铜仁市",109.187,27.7216,[["碧江区",109.1875,27.722],["万山区",109.2075,27.5223],["江口县",108.8443,27.6954],["玉屏侗族自治县",108.9138,27.2416],["石阡县",108.2257,27.5227],["思南县",108.2516,27.9447],["印江土家族苗族自治县",108.4011,28.0012],["德江县",108.1129,28.2642],["沿河土家族自治县",108.4915,28.5638],["松桃苗族自治县",109.198,28.1688]]],["黔西南布依族苗族自治州",104.8955,25.0912,[["兴义市",104.8955,25.0917],["兴仁市",105.1897,25.4343],["普安县",104.9527,25.7896],["晴隆县",105.2157,25.836],["贞丰县",105.6469,25.3888],["望谟县",106.0879,25.1694],["册亨县",105.8091,24.9863],["安龙县",105.4682,25.1118]]],["黔东南苗族侗族自治州",107.9734,26.5869,[["凯里市",107.9734,26.5865],["黄平县",107.8973,26.9006],["施秉县",108.1224,27.0379],["三穗县",108.677,26.9634],["镇远县",108.4193,27.0535],["岑巩县",108.8123,27.1767],["天柱县",109.2083,26.9131],["锦屏县",109.198,26.6841],["剑河县",108.4362,26.7307],["台江县",108.3104,26.6726],["黎平县",109.1319,26.2338],["榕江县",108.517,25.9343],["从江县",108.9086,25.7503],["雷山县",108.0753,26.3843],["麻江县",107.5891,26.4985],["丹寨县",107.7906,26.2029]]],["黔南布依族苗族自治州",107.513,26.2616,[["都匀市",107.5128,26.2616],["福泉市",107.5093,26.706],["荔波县",107.8798,25.4153],["贵定县",107.2294,26.5843],["瓮安县",107.4741,27.0697],["独山县",107.5387,25.8295],["平塘县",107.3198,25.8348],["罗甸县",106.7462,25.4328],["长顺县",106.4436,26.0252],["龙里县",106.9738,26.4523],["惠水县",106.6542,26.1321],["三都水族自治县",107.8735,25.9886]]]]],["辽宁省",123.423,41.7943,[["沈阳市",123.423,41.7943,[["和平区",123.4005,41.7856],["沈河区",123.4396,41.7932],["大东区",123.4639,41.8062],["皇姑区",123.3995,41.8199],["铁西区",123.3446,41.7854],["苏家屯区",123.3356,41.6635],["浑南区",123.4529,41.7396],["沈北新区",123.5156,42.0501],["于洪区",123.3049,41.7935],["辽中区",122.7259,41.5105],["康平县",123.3465,42.7391],["法库县",123.4105,42.5046],["新民市",122.8235,41.9944]]],["大连市",121.6137,38.9138,[["中山区",121.6388,38.9207],["西岗区",121.6112,38.9135],["沙河口区",121.5888,38.9121],["甘井子区",121.5777,38.9743],["旅顺口区",121.2619,38.8111],["金州区",121.7843,39.0517],["普兰店区",121.9655,39.4004],["长海县",122.583,39.2714],["瓦房店市",121.9975,39.6293],["庄河市",122.9654,39.697]]],["鞍山市",122.9901,41.1087,[["铁东区",122.989,41.1084],["铁西区",122.9664,41.1088],["立山区",123.0192,41.1486],["千山区",122.944,41.0671],["台安县",122.4243,41.3846],["岫岩满族自治县",123.2827,40.2801],["海城市",122.7469,40.8508]]],["抚顺市",123.9154,41.8739,[["新抚区",123.8972,41.8587],["东洲区",124.0411,41.8644],["望花区",123.7956,41.8496],["顺城区",123.9115,41.879],["抚顺县",124.0918,41.9202],["新宾满族自治县",125.0314,41.7301],["清原满族自治县",124.9214,42.0992]]],["本溪市",123.7646,41.2958,[["平山区",123.7553,41.2895],["溪湖区",123.7593,41.3279],["明山区",123.7574,41.3003],["南芬区",123.7425,41.1021],["本溪满族自治县",124.1201,41.2981],["桓仁满族自治县",125.353,41.2667]]],["丹东市",124.3772,40.1227,[["元宝区",124.392,40.1349],["振兴区",124.3554,40.1012],["振安区",124.4219,40.157],["宽甸满族自治县",124.7791,40.7288],["东港市",124.1436,39.8819],["凤城市",124.0651,40.4559]]],["锦州市",121.1301,41.1172,[["古塔区",121.1244,41.1137],["凌河区",121.1457,41.1126],["太和区",121.1016,41.1033],["黑山县",122.1124,41.6894],["义县",121.2373,41.5351],["凌海市",121.3586,41.1696],["北镇市",121.7906,41.5966]]],["营口市",122.23,40.6659,[["站前区",122.2481,40.6684],["西市区",122.2049,40.6615],["鲅鱼圈区",122.1219,40.2621],["老边区",122.3772,40.681],["盖州市",122.3502,40.4037],["大石桥市",122.5007,40.6324]]],["阜新市",121.6436,42.0097,[["海州区",121.6523,42.0091],["新邱区",121.7851,42.0844],["太平区",121.6722,42.009],["清河门区",121.4144,41.7781],["细河区",121.6494,42.0171],["阜新蒙古族自治县",121.7376,42.0564],["彰武县",122.5322,42.3827]]],["辽阳市",123.1757,41.2673,[["白塔区",123.1668,41.2653],["文圣区",123.1824,41.2646],["宏伟区",123.1947,41.2037],["弓长岭区",123.4256,41.1557],["太子河区",123.1796,41.2496],["辽阳县",123.0738,41.2143],["灯塔市",123.3199,41.4256]]],["盘锦市",122.0641,41.1224,[["双台子区",122.0503,41.1882],["兴隆台区",122.0661,41.1203],["大洼区",122.0662,40.9924],["盘山县",121.98,41.2387]]],["铁岭市",123.8384,42.2885,[["银州区",123.839,42.2902],["清河区",124.1428,42.5406],["铁岭县",123.7197,42.2211],["西丰县",124.7173,42.7358],["昌图县",124.1039,42.7819],["调兵山市",123.5395,42.4486],["开原市",124.0394,42.5398]]],["朝阳市",120.4455,41.5745,[["双塔区",120.4431,41.5771],["龙城区",120.4076,41.5744],["朝阳县",120.3984,41.524],["建平县",119.6364,41.4007],["喀喇沁左翼蒙古族自治县",119.7388,41.1236],["北票市",120.7615,41.8011],["凌源市",119.3983,41.2409]]],["葫芦岛市",120.8513,40.7541,[["连山区",120.8542,40.7537],["龙港区",120.8334,40.7085],["南票区",120.7469,41.0969],["绥中县",120.3365,40.3269],["建昌县",119.8019,40.8113],["兴城市",120.7241,40.6179]]]]],["重庆市",106.5011,29.5359,[["重庆市",106.5011,29.5359,[["万州区",108.3757,30.8101],["涪陵区",107.3903,29.7061],["渝中区",106.5592,29.5596],["大渡口区",106.4822,29.4837],["江北区",106.5291,29.5782],["沙坪坝区",106.4502,29.5438],["九龙坡区",106.4771,29.5262],["南岸区",106.5571,29.5269],["北碚区",106.4339,29.8279],["綦江区",106.6477,29.0313],["大足区",105.7117,29.7032],["渝北区",106.509,29.6042],["巴南区",106.5156,29.3848],["黔江区",108.7782,29.5303],["长寿区",107.0704,29.8361],["江津区",106.2494,29.2862],["合川区",106.2618,29.9936],["永川区",105.8912,29.3518],["南川区",107.0937,29.1594],["璧山区",106.2274,29.5963],["铜梁区",106.051,29.8425],["潼南区",105.8382,30.1923],["荣昌区",105.5907,29.4066],["开州区",108.4087,31.1698],["梁平区",107.7956,30.6747],["武隆区",107.7521,29.3266],["城口县",108.6605,31.9486],["丰都县",107.728,29.8691],["垫江县",107.3441,30.3325],["忠县",108.033,30.2941],["云阳县",108.6933,30.9329],["奉节县",109.4608,31.0222],["巫山县",109.8742,31.0773],["巫溪县",109.6242,31.3989],["石柱土家族自治县",108.1079,30.001],["秀山土家族苗族自治县",108.9916,28.4482],["酉阳土家族苗族自治县",108.7629,28.843],["彭水苗族土家族自治县",108.1621,29.2966]]]]],["陕西省",108.9434,34.2647,[["西安市",108.9434,34.2647,[["新城区",108.9552,34.2708],["碑林区",108.9423,34.2526],["莲湖区",108.9286,34.2672],["灞桥区",109.0621,34.2687],["未央区",108.9414,34.3098],["雁塔区",108.922,34.215],["阎良区",109.223,34.6633],["临潼区",109.2089,34.3734],["长安区",108.9369,34.1587],["高陵区",109.0837,34.5362],["鄠邑区",108.603,34.1103],["蓝田县",109.3125,34.1576],["周至县",108.2118,34.163]]],["铜川市",108.9748,34.9176,[["王益区",109.0707,35.0697],["印台区",109.0956,35.1124],["耀州区",108.9578,34.9112],["宜君县",109.113,35.399]]],["宝鸡市",107.1401,34.3706,[["渭滨区",107.1397,34.3723],["金台区",107.1451,34.3765],["陈仓区",107.3787,34.354],["凤翔区",107.3956,34.5228],["岐山县",107.6199,34.4445],["扶风县",107.8869,34.3771],["眉县",107.7476,34.2736],["陇县",106.8528,34.8944],["千阳县",107.1282,34.6437],["麟游县",107.7918,34.6789],["凤县",106.5212,33.9141],["太白县",107.3117,34.0607]]],["咸阳市",108.7005,34.3349,[["秦都区",108.694,34.3313],["杨陵区",108.0814,34.2726],["渭城区",108.7262,34.3383],["三原县",108.9388,34.6154],["泾阳县",108.8332,34.5299],["乾县",108.2427,34.5286],["礼泉县",108.4235,34.4837],["永寿县",108.1382,34.6936],["长武县",107.791,35.2068],["旬邑县",108.3324,35.1128],["淳化县",108.5767,34.7992],["武功县",108.2082,34.2612],["兴平市",108.4838,34.2985],["彬州市",108.0787,35.0349]]],["渭南市",109.4977,34.5007,[["临渭区",109.4981,34.5026],["华州区",109.7562,34.5132],["潼关县",110.242,34.5458],["大荔县",109.938,34.7962],["合阳县",110.1425,35.2375],["澄城县",109.9325,35.1848],["蒲城县",109.5846,34.9571],["白水县",109.5893,35.1781],["富平县",109.1821,34.7477],["韩城市",110.4468,35.4754],["华阴市",110.0841,34.5664]]],["延安市",109.4854,36.5964,[["宝塔区",109.4853,36.5962],["安塞区",109.3199,36.8641],["延长县",110.0075,36.5782],["延川县",110.1848,36.8817],["志丹县",108.764,36.8228],["吴起县",108.172,36.9245],["甘泉县",109.3442,36.2777],["富县",109.3787,35.9964],["洛川县",109.4302,35.7622],["宜川县",110.1701,36.0504],["黄龙县",109.8298,35.5837],["黄陵县",109.2573,35.5804],["子长市",109.6706,37.1417]]],["汉中市",107.0241,33.0795,[["汉台区",107.0237,33.0795],["南郑区",106.9382,33.0055],["城固县",107.3251,33.1549],["洋县",107.5454,33.2253],["西乡县",107.7612,32.99],["勉县",106.6761,33.1576],["宁强县",106.2534,32.8329],["略阳县",106.1498,33.3313],["镇巴县",107.8909,32.5383],["留坝县",106.9202,33.6152],["佛坪县",107.984,33.5224]]],["榆林市",109.7356,38.2896,[["榆阳区",109.7423,38.2987],["横山区",109.2871,37.9634],["府谷县",111.0631,39.0283],["靖边县",108.8007,37.5955],["定边县",107.5964,37.5948],["绥德县",110.2598,37.5071],["米脂县",110.173,37.7584],["佳县",110.4877,38.021],["吴堡县",110.7335,37.4513],["清涧县",110.1158,37.0871],["子洲县",110.0289,37.6109],["神木市",110.4912,38.835]]],["安康市",109.0244,32.6924,[["汉滨区",109.0242,32.6929],["汉阴县",108.5064,32.8932],["石泉县",108.246,33.0405],["宁陕县",108.3091,33.3139],["紫阳县",108.5334,32.5225],["岚皋县",108.8962,32.3131],["平利县",109.3567,32.39],["镇坪县",109.5216,31.8856],["旬阳市",109.363,32.8355],["白河县",110.1089,32.8114]]],["商洛市",109.9348,33.87,[["商州区",109.9327,33.8709],["洛南县",110.1404,34.0898],["丹凤县",110.3266,33.6962],["商南县",110.8801,33.5282],["山阳县",109.8755,33.5322],["镇安县",109.146,33.4255],["柞水县",109.1061,33.6842]]]]],["青海省",101.777,36.6233,[["西宁市",101.777,36.6233,[["城东区",101.7942,36.6161],["城中区",101.7826,36.6213],["城西区",101.7617,36.6284],["城北区",101.7593,36.6485],["湟中区",101.5677,36.5007],["大通回族土族自治县",101.6823,36.9313],["湟源县",101.2615,36.6849]]],["海东市",102.1012,36.5029,[["乐都区",102.4004,36.4802],["平安区",102.1022,36.5026],["民和回族土族自治县",102.8023,36.3297],["互助土族自治县",101.955,36.84],["化隆回族自治县",102.2605,36.0986],["循化撒拉族自治县",102.4847,35.8475]]],["海北藏族自治州",100.8996,36.9595,[["门源回族自治县",101.6167,37.3764],["祁连县",100.2483,38.1751],["海晏县",100.899,36.9596],["刚察县",100.1368,37.3258]]],["黄南藏族自治州",102.0181,35.5181,[["同仁市",102.0157,35.5167],["尖扎县",102.03,35.9384],["泽库县",101.4673,35.0377],["河南蒙古族自治县",101.6102,34.7359]]],["海南藏族自治州",100.6183,36.2808,[["共和县",100.6183,36.2807],["同德县",100.5782,35.2554],["贵德县",101.4297,36.0406],["兴海县",99.9856,35.5896],["贵南县",100.7464,35.5875]]],["果洛藏族自治州",100.2408,34.4751,[["玛沁县",100.2422,34.4749],["班玛县",100.7365,32.9337],["甘德县",99.9015,33.9688],["达日县",99.6506,33.7551],["久治县",101.483,33.432],["玛多县",98.2109,34.9164]]],["玉树藏族自治州",97.0081,33.0062,[["玉树市",97.0083,33.0061],["杂多县",95.2923,32.8941],["称多县",97.1102,33.3696],["治多县",95.6161,33.8543],["囊谦县",96.4794,32.2056],["曲麻莱县",95.7999,34.1283]]],["海西蒙古族藏族自治州",97.37,37.3742,[["格尔木市",94.9049,36.402],["德令哈市",97.3693,37.3741],["茫崖市",90.8546,38.2471],["乌兰县",98.4792,36.9303],["都兰县",98.0884,36.2986],["天峻县",99.0197,37.2987],["海西蒙古族藏族自治州直辖",95.3559,37.8532]]]]],["香港特别行政区",114.1684,22.3228,[["香港特别行政区",114.1684,22.3228,[["中西区",114.1494,22.2847],["湾仔区",114.178,22.2792],["东区",114.2212,22.2825],["南区",114.155,22.2486],["油尖旺区",114.1684,22.3145],["深水埗区",114.1583,22.3366],["九龙城区",114.1879,22.3153],["黄大仙区",114.199,22.3391],["观塘区",114.2092,22.3237],["荃湾区",114.116,22.371],["屯门区",113.9716,22.3968],["元朗区",114.0274,22.4442],["北区",114.1423,22.4988],["大埔区",114.1668,22.4484],["西贡区",114.2598,22.3171],["沙田区",114.1905,22.3823],["葵青区",114.1343,22.3666],["离岛区",113.9413,22.2894]]]]],["黑龙江省",126.6365,45.755,[["哈尔滨市",126.6365,45.755,[["道里区",126.6066,45.7601],["南岗区",126.6461,45.754],["道外区",126.6428,45.7826],["平房区",126.6233,45.6036],["松北区",126.5571,45.8127],["香坊区",126.661,45.7111],["呼兰区",126.5974,45.9824],["阿城区",126.9666,45.5363],["双城区",126.3025,45.3758],["依兰县",129.5582,46.3132],["方正县",128.8294,45.8375],["宾县",127.4793,45.7572],["巴彦县",127.3968,46.0797],["木兰县",128.036,45.9476],["通河县",128.741,45.9755],["延寿县",128.3253,45.4534],["尚志市",127.9622,45.2129],["五常市",127.1512,44.9172]]],["齐齐哈尔市",123.9513,47.34,[["龙沙区",123.9507,47.3396],["建华区",123.9493,47.3524],["铁锋区",123.9669,47.3374],["昂昂溪区",123.8065,47.1548],["富拉尔基区",123.6323,47.205],["碾子山区",122.8819,47.512],["梅里斯达斡尔族区",123.7478,47.3089],["龙江县",123.1805,47.3341],["依安县",125.3004,47.8878],["泰来县",123.4127,46.3903],["甘南县",123.4991,47.9157],["富裕县",124.4622,47.7948],["克山县",125.8677,48.0323],["克东县",126.2424,48.0351],["拜泉县",126.0849,47.6049],["讷河市",124.8754,48.4793]]],["鸡西市",130.9685,45.2979,[["鸡冠区",130.9669,45.2982],["恒山区",130.9034,45.2112],["滴道区",130.8395,45.3467],["梨树区",130.6904,45.09],["城子河区",131.0028,45.336],["麻山区",130.4737,45.2073],["鸡东县",131.1411,45.2485],["虎林市",132.9668,45.7658],["密山市",131.8668,45.5451]]],["鹤岗市",130.2697,47.3297,[["向阳区",130.2846,47.3429],["工农区",130.2688,47.3293],["南山区",130.2677,47.3108],["兴安区",130.2284,47.2505],["东山区",130.3092,47.3349],["兴山区",130.2975,47.3575],["萝北县",130.8213,47.5752],["绥滨县",131.8528,47.2876]]],["双鸭山市",131.1492,46.6412,[["尖山区",131.1509,46.6407],["岭东区",131.1556,46.5889],["四方台区",131.3251,46.5921],["宝山区",131.3961,46.5711],["集贤县",131.1312,46.7267],["友谊县",131.8029,46.773],["宝清县",132.1989,46.3266],["饶河县",134.0137,46.799]]],["大庆市",125.1057,46.5886,[["萨尔图区",125.1076,46.5943],["龙凤区",125.1388,46.5719],["让胡路区",124.8619,46.6515],["红岗区",124.8831,46.4013],["大同区",124.8121,46.0324],["肇州县",125.2666,45.7066],["肇源县",125.0751,45.5166],["林甸县",124.8712,47.1844],["杜尔伯特蒙古族自治县",124.4394,46.8638]]],["伊春市",128.8924,47.7226,[["伊美区",128.9003,47.726],["乌翠区",128.6629,47.7244],["友好区",128.8337,47.8515],["嘉荫县",130.3893,48.889],["汤旺县",129.5633,48.4526],["丰林县",129.5257,48.2883],["大箐山县",129.0134,47.0261],["南岔县",129.2748,47.135],["金林区",129.4211,47.4105],["铁力市",128.0237,46.9835]]],["佳木斯市",130.3537,46.8073,[["向阳区",130.3539,46.8073],["前进区",130.3698,46.81],["东风区",130.3953,46.8201],["郊区",130.3437,46.8048],["桦南县",130.5628,46.2382],["桦川县",130.7159,47.0208],["汤原县",129.897,46.7281],["同江市",132.5026,47.6487],["富锦市",132.03,47.2482],["抚远市",134.2868,48.3623]]],["七台河市",131.0078,45.769,[["新兴区",130.8821,45.7922],["桃山区",131.0081,45.769],["茄子河区",131.0636,45.7742],["勃利县",130.5678,45.7495]]],["牡丹江市",129.6115,44.581,[["东安区",129.6162,44.5804],["阳明区",129.6276,44.5944],["爱民区",129.5942,44.5935],["西安区",129.6061,44.5791],["林口县",130.261,45.2844],["绥芬河市",131.1572,44.3945],["海林市",129.3805,44.5719],["宁安市",129.4627,44.3446],["穆棱市",130.5199,44.9176],["东宁市",131.1176,44.061]]],["黑河市",127.4916,50.2479,[["爱辉区",127.4902,50.2473],["逊克县",128.4687,49.5808],["孙吴县",127.32,49.4217],["北安市",126.5022,48.2433],["五大连池市",126.1908,48.5106],["嫩江市",125.2226,49.1753]]],["绥化市",126.9865,46.6354,[["北林区",126.9842,46.633],["望奎县",126.4778,46.8314],["兰西县",126.2829,46.2571],["青冈县",126.1055,46.6844],["庆安县",127.5033,46.8771],["明水县",125.9011,47.1815],["绥棱县",127.1042,47.2447],["安达市",125.323,46.4086],["肇东市",125.9849,46.0675],["海伦市",126.9629,47.4582]]],["大兴安岭地区",124.7038,52.3339,[["漠河市",122.5292,52.9706],["加格达奇区",124.1191,50.423],["呼玛县",126.655,51.7255],["塔河县",124.7028,52.3338]]]]]],"stats":{"province":34,"city":370,"district":2875,"virtual_city":7}};
+
+const GEO_CSS = `
+.gp-wrap{font-family:inherit}
+.gp-cur{font-size:11.5px;line-height:1.7;padding:9px 11px;border-radius:10px;
+  background:rgba(91,143,168,.10);border:1px solid rgba(91,143,168,.22);margin-bottom:10px}
+.gp-cur b{color:#3d6d87}
+.gp-search{display:flex;gap:6px;margin-bottom:8px}
+.gp-search input{flex:1;min-width:0;border:1px solid rgba(90,78,62,.2);border-radius:10px;
+  padding:9px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:inherit}
+.gp-search button,.gp-act button{border:0;border-radius:10px;padding:9px 12px;font-size:11.5px;
+  font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.gp-search button{background:#e9f0f3;color:#3d6d87}
+.gp-results{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;margin-bottom:9px}
+.gp-results:empty{display:none}
+.gp-res{text-align:left;border:1px solid rgba(90,78,62,.14);border-radius:9px;background:#fff;
+  padding:8px 10px;font-size:11.5px;cursor:pointer;font-family:inherit;line-height:1.5}
+.gp-res:hover{border-color:#5b8fa8;background:#f4f9fb}
+.gp-res b{color:#3d6d87}
+.gp-res small{display:block;opacity:.6;font-size:10px}
+.gp-sels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:9px}
+.gp-sels select{width:100%;min-width:0;border:1px solid rgba(90,78,62,.2);border-radius:9px;
+  padding:8px 6px;font-size:11.5px;font-family:inherit;background:#fff;color:inherit}
+.gp-lbl{font-size:10px;opacity:.6;margin-bottom:3px;display:block}
+.gp-act{display:flex;gap:7px}
+.gp-act button{flex:1}
+.gp-gps{background:#eef3ea;color:#567a5c}
+.gp-apply{background:linear-gradient(135deg,#3d6d87,#7aa9bf);color:#fff}
+.gp-tip{font-size:10px;line-height:1.7;opacity:.65;margin-top:9px}
+@media(max-width:380px){.gp-sels{grid-template-columns:1fr 1fr}.gp-sels div:last-child{grid-column:1/-1}}
+`;
+(function(){ const st=document.createElement('style'); st.textContent=GEO_CSS; document.head.appendChild(st); })();
+
+/* 展平所有区县级叶子，供最近邻匹配 */
+let _geoLeaves = null;
+function geoLeaves(){
+  if(_geoLeaves) return _geoLeaves;
+  const out=[];
+  GEO.tree.forEach((p,pi)=>p[3].forEach((c,ci)=>{
+    (c[3]||[]).forEach((d,di)=>out.push({p:p[0],c:c[0],d:d[0],lng:d[1],lat:d[2],pi,ci,di}));
+  }));
+  _geoLeaves=out; return out;
+}
+/* 由 GPS 经纬度反推 省 / 市 / 区·县 */
+function geoNearest(lat,lng){
+  const k=Math.cos(lat*Math.PI/180);
+  let best=null,bd=Infinity;
+  for(const a of geoLeaves()){
+    const dx=(a.lng-lng)*k, dy=a.lat-lat, d=dx*dx+dy*dy;
+    if(d<bd){ bd=d; best=a; }
+  }
+  if(!best) return null;
+  return { province:best.p, city:best.c, district:best.d,
+    lat:best.lat, lng:best.lng, distanceKm:Math.round(Math.sqrt(bd)*111) };
+}
+/* 按名称取坐标（手动选择时用区县中心点） */
+function geoLookup(province,city,district){
+  const p=GEO.tree.find(x=>x[0]===province); if(!p)return null;
+  const c=p[3].find(x=>x[0]===city); if(!c)return null;
+  const d=(c[3]||[]).find(x=>x[0]===district);
+  return d?{province,city,district,lat:d[2],lng:d[1]}:null;
+}
+/* 模糊搜索：省 / 市 / 区县名命中即返回完整路径 */
+function geoSearch(kw,limit=8){
+  kw=String(kw||'').trim().replace(/[省市县区特别行政区自治区自治州盟]/g,'');
+  if(!kw) return [];
+  const out=[];
+  for(const a of geoLeaves()){
+    const hay=(a.p+a.c+a.d).replace(/[省市县区特别行政区自治区自治州盟]/g,'');
+    if(hay.includes(kw)){
+      out.push({province:a.p,city:a.c,district:a.d,lat:a.lat,lng:a.lng});
+      if(out.length>=limit) break;
+    }
+  }
+  return out;
+}
+/* 调浏览器定位；失败返回原因，成功附区县反查结果 */
+function geoLocate(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){ resolve({ok:false,reason:'unsupported'}); return; }
+    let done=false;
+    const finish=v=>{ if(done)return; done=true; clearTimeout(tid); resolve(v); };
+    const tid=setTimeout(()=>finish({ok:false,reason:'timeout'}),9000);
+    try{
+      navigator.geolocation.getCurrentPosition(
+        pos=>{
+          const {latitude:lat,longitude:lng,accuracy}=pos.coords;
+          const area=geoNearest(lat,lng);
+          // 离最近区县太远（>150km，多半在境外或定位漂移）视为取不到
+          if(!area||area.distanceKm>150){ finish({ok:false,reason:'outside',lat,lng,area}); return; }
+          finish({ok:true,lat,lng,accuracy,area});
+        },
+        err=>finish({ok:false,reason:err&&err.code===1?'denied':(err&&err.code===3?'timeout':'unavailable')}),
+        {enableHighAccuracy:false,timeout:8000,maximumAge:10*60*1000}
+      );
+    }catch(e){ finish({ok:false,reason:'unsupported'}); }
+  });
+}
+const GEO_REASON = {
+  denied:'你拒绝了定位权限', timeout:'定位超时', unavailable:'定位服务不可用',
+  unsupported:'当前环境不支持定位（file:// 打开常见）', outside:'定位结果不在中国大陆范围内'
+};
+
+/* ---------- 三级选择器 UI ---------- */
+/* 生成 HTML；onPick(loc) 在用户确认或重新定位成功时回调 */
+function geoPickerHTML(cur){
+  const t=cur?`${cur.province} / ${cur.city} / ${cur.district}`:'尚未设置';
+  const src=cur?(cur.source==='gps'?'GPS 定位':(cur.source==='search'?'搜索指定':'手动选择')):'';
+  return `<div class="gp-wrap" id="gpWrap">
+    <div class="gp-cur" id="gpCur">📍 当前：<b>${t}</b>${src?' · '+src:''}</div>
+    <div class="gp-search"><input id="gpKw" placeholder="搜省 / 市 / 区县，如 丰泽、石狮、晋江">
+      <button type="button" id="gpSearchBtn">搜索</button></div>
+    <div class="gp-results" id="gpResults"></div>
+    <div class="gp-sels">
+      <div><span class="gp-lbl">省 / 直辖市</span><select id="gpProv"></select></div>
+      <div><span class="gp-lbl">市 / 地区</span><select id="gpCity"></select></div>
+      <div><span class="gp-lbl">区 / 县 / 县级市</span><select id="gpDist"></select></div>
+    </div>
+    <div class="gp-act">
+      <button type="button" class="gp-gps" id="gpGps">📍 重新定位</button>
+      <button type="button" class="gp-apply" id="gpApply">使用这个位置</button>
+    </div>
+    <div class="gp-tip">第三级包含市辖区、县、自治县、县级市、旗等。定位需 https 或 localhost；取不到时可直接搜索或逐级选择。坐标只用于请求天气，不上传。</div>
+  </div>`;
+}
+function geoBindPicker(root,cur,onPick,showToast){
+  const $=s=>root.querySelector(s);
+  const P=$('#gpProv'), C=$('#gpCity'), D=$('#gpDist');
+  const toast=showToast||function(t){ console.log(t); };
+  const opts=(arr,sel)=>arr.map((x,i)=>`<option value="${i}" ${x===sel?'selected':''}>${x}</option>`).join('');
+  const provNames=GEO.tree.map(p=>p[0]);
+
+  let pi=0,ci=0,di=0;
+  if(cur){
+    const pIdx=provNames.indexOf(cur.province);
+    if(pIdx>=0){ pi=pIdx;
+      const cIdx=GEO.tree[pi][3].findIndex(c=>c[0]===cur.city);
+      if(cIdx>=0){ ci=cIdx; const dIdx=(GEO.tree[pi][3][ci][3]||[]).findIndex(d=>d[0]===cur.district); if(dIdx>=0)di=dIdx; }
+    }
+  }
+  function render(){
+    P.innerHTML=opts(provNames); P.value=pi;
+    const cs=GEO.tree[pi][3]; ci=Math.max(0,Math.min(ci,cs.length-1));
+    C.innerHTML=opts(cs.map(c=>c[0])); C.value=ci;
+    const ds=cs[ci][3]||[]; di=Math.max(0,Math.min(di,ds.length-1));
+    D.innerHTML=opts(ds.map(d=>d[0])); D.value=di;
+  }
+  render();
+  P.onchange=()=>{ pi=+P.value; ci=0; di=0; render(); };
+  C.onchange=()=>{ ci=+C.value; di=0; render(); };
+  D.onchange=()=>{ di=+D.value; };
+
+  function current(){
+    const p=GEO.tree[pi], c=p[3][ci], d=(c[3]||[])[di];
+    return d?{province:p[0],city:c[0],district:d[0],lat:d[2],lng:d[1],source:'manual'}:null;
+  }
+  function setTo(loc){
+    const pIdx=provNames.indexOf(loc.province); if(pIdx<0)return;
+    pi=pIdx;
+    const cIdx=GEO.tree[pi][3].findIndex(c=>c[0]===loc.city); ci=cIdx>=0?cIdx:0;
+    const dIdx=(GEO.tree[pi][3][ci][3]||[]).findIndex(d=>d[0]===loc.district); di=dIdx>=0?dIdx:0;
+    render();
+    $('#gpCur').innerHTML=`📍 当前：<b>${loc.province} / ${loc.city} / ${loc.district}</b> · 已定位`;
+  }
+  function doSearch(){
+    const kw=$('#gpKw').value.trim();
+    const rs=geoSearch(kw);
+    const R=$('#gpResults');
+    if(!rs.length){ R.innerHTML='<div class="gp-res" style="cursor:default">没找到，试试「丰泽」「晋江」「石狮」或逐级选择</div>'; return; }
+    R.innerHTML=rs.map((r,i)=>`<button type="button" class="gp-res" data-i="${i}"><b>${r.district}</b>
+      <small>${r.province} / ${r.city} / ${r.district}</small></button>`).join('');
+    R.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{
+      const loc={...rs[+b.dataset.i],source:'search'};
+      setTo(loc); R.innerHTML='';
+      const l=geoLookup(loc.province,loc.city,loc.district);
+      onPick({...loc,...(l||{}),source:'search'});
+      toast('位置已设为 '+loc.province+' / '+loc.city+' / '+loc.district);
+    });
+  }
+  $('#gpSearchBtn').onclick=doSearch;
+  $('#gpKw').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();doSearch();} });
+  $('#gpApply').onclick=()=>{
+    const loc=current();
+    if(!loc){ toast('请选择到区 / 县一级'); return; }
+    onPick(loc); toast('位置已设为 '+loc.province+' / '+loc.city+' / '+loc.district);
+  };
+  $('#gpGps').onclick=async()=>{
+    toast('📍 正在定位…');
+    const r=await geoLocate();
+    if(!r.ok){ toast('定位失败：'+(GEO_REASON[r.reason]||r.reason)+'，请手动选择'); return; }
+    const loc={...r.area,lat:r.lat,lng:r.lng,source:'gps'};
+    setTo(loc);
+    onPick(loc); toast('定位成功：'+loc.province+' / '+loc.city+' / '+loc.district);
+  };
+}
+
+
+/* =========================================================
+   大水计算器 · 单文件桌宠
+   数据全部存在浏览器 localStorage，不上传任何服务器。
+   可选增强：实时天气（Open-Meteo，无需 Key）、在线大模型语录。
+   ========================================================= */
+
+/* ============================================================
+   大水打卡 · 防作弊 / 积分 / 分享 / 排行榜（两版共用）
+   全部在本机计算，不联网、不上传。依赖宿主：S / save / toast / today / PD
+   ============================================================ */
+const SCORE_CFG = {
+  base:10,                                   // 每次合规打卡基础分
+  slot:{dawn:8,morning:6,noon:4,afternoon:3,evening:1,night:0}, // 按时段完成加分
+  achieveBefore:{12:50,15:40,18:30,22:20}, // 达标时刻越早分越高
+  achieveLate:10,
+  goalBonus:20, perfectBonus:15,
+  milkPenalty:15, cheatPenalty:8
+};
+
+const SCORE_CSS = `
+.sc-wrap{font-family:inherit}
+.sc-tabs{display:flex;gap:6px;margin-bottom:12px}
+.sc-tabs button{flex:1;border:1px solid rgba(90,78,62,.18);background:#fff;color:#6b6255;border-radius:99px;
+  padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.sc-tabs button.on{background:linear-gradient(135deg,#3d6d87,#7aa9bf);color:#fff;border-color:transparent}
+.sc-rule{font-size:10.5px;line-height:1.8;color:#7a7163;background:#f7f3ea;border:1px solid rgba(90,78,62,.12);
+  border-radius:11px;padding:10px 12px;margin-bottom:11px}
+.sc-rule b{color:#3d6d87}
+.sc-row{display:flex;align-items:center;gap:10px;padding:9px 11px;background:#fff;border:1px solid rgba(90,78,62,.13);
+  border-radius:11px;margin-bottom:7px;font-size:12px}
+.sc-row.me{background:#eef6f9;border-color:rgba(61,109,135,.32)}
+.sc-rk{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:12px;
+  background:#eee7da;color:#8b8276;flex:none}
+.sc-rk.g1{background:#f2d488;color:#7a5a17}.sc-rk.g2{background:#d9e0e5;color:#5b6a75}.sc-rk.g3{background:#e6c3a5;color:#8a5c33}
+.sc-nm{flex:1;min-width:0;font-weight:700}.sc-nm small{display:block;font-weight:500;font-size:10px;color:#8b8276;margin-top:2px}
+.sc-pt{font-weight:800;color:#3d6d87;font-size:15px}
+.sc-cd{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#fff;
+  background:rgba(182,97,90,.85);border-radius:99px;padding:4px 10px}
+.sc-cd.ok{background:rgba(108,154,118,.9)}
+.sc-new{display:flex;gap:6px;margin-top:11px}
+.sc-new input{flex:1;min-width:0;border:1px solid rgba(90,78,62,.2);border-radius:9px;padding:8px 10px;
+  font-size:12px;font-family:inherit;background:#fff}
+.sc-new button{border:0;border-radius:9px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer;
+  background:linear-gradient(135deg,#3d6d87,#7aa9bf);color:#fff;font-family:inherit;white-space:nowrap}
+.sc-mini{font-size:9.5px;color:#a09788;text-align:right;cursor:pointer;margin-top:5px}
+.sc-bd{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}
+.sc-bd span{font-size:10px;background:#fff;border:1px solid rgba(90,78,62,.14);border-radius:99px;padding:4px 9px;color:#6b6255}
+.sc-bd span.neg{color:#a2564e;border-color:rgba(182,97,90,.3)}
+.sc-share{width:100%;border-radius:12px;display:block;margin:10px 0;border:1px solid rgba(90,78,62,.15)}
+.sc-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.08em;
+  color:#3d6d87;background:#f2f7fa;border-radius:8px;padding:7px 10px;text-align:center;font-weight:700}
+`;
+(function(){ const st=document.createElement('style'); st.textContent=SCORE_CSS; document.head.appendChild(st); })();
+
+/* ---------- 本机多档案（让排行榜有可排的选手） ---------- */
+function ensureProfiles(){
+  if(!S.profiles||!S.profiles.length){
+    S.profiles=[{id:'me',name:'我',emoji:'💧',days:(S.days&&Object.keys(S.days).length?S.days:{}),submitted:{}}];
+    S.activeId='me'; save();
+  }
+  if(!S.activeId) S.activeId=S.profiles[0].id;
+}
+function PROFILE(){
+  ensureProfiles();
+  return S.profiles.find(p=>p.id===S.activeId)||S.profiles[0];
+}
+function PD(){ const p=PROFILE(); return p.days||(p.days={}); }
+function slotOf(ts){
+  const h=new Date(ts).getHours();
+  return h<9?'dawn':h<12?'morning':h<14?'noon':h<18?'afternoon':h<22?'evening':'night';
+}
+const SLOT_CN={dawn:'清晨',morning:'上午',noon:'午间',afternoon:'下午',evening:'傍晚',night:'深夜'};
+/* 防作弊冷却独立于「提醒间隔」：默认 30 分钟，切 1 分钟演示模式也不会被绕过 */
+function cooldownMin(){
+  const v=Number((S.settings||{}).checkinCooldown);
+  return Number.isFinite(v)&&v>=1 ? Math.min(120,v) : 30;
+}
+
+/* ---------- 防作弊：两次有效打卡必须间隔 >= 冷却 ---------- */
+function lastWaterTs(){
+  /* 忽略未来时间戳（导入脏数据 / 系统时间回拨），否则冷却会被算成几小时 */
+  const now=Date.now();
+  let t=0, days={};
+  try{ days=PD(); }catch(e){ return 0; }
+  for(const k in days) for(const l of (days[k].logs||[]))
+    if(l.type==='water'&&l.ts<=now&&l.ts>t) t=l.ts;
+  return t;
+}
+function checkinState(){
+  const last=lastWaterTs(), cd=cooldownMin()*60000;
+  const waitMs=Math.max(0,last+cd-Date.now());
+  return {ok:waitMs<=0,waitMs,last,cd,nextAt:new Date(last+cd)};
+}
+function fmtWait(ms){
+  const s=Math.ceil(ms/1000);
+  return s>=60?`${Math.floor(s/60)} 分 ${String(s%60).padStart(2,'0')} 秒`:`${s} 秒`;
+}
+function guardCheckin(){
+  const st=checkinState();
+  if(st.ok) return true;
+  try{ toast(`⛔ 防作弊：${cooldownMin()} 分钟内只能打卡一次，还要等 ${fmtWait(st.waitMs)}`); }catch(e){}
+  return false;
+}
+function cooldownChip(){
+  const st=checkinState();
+  return st.ok ? '<span class="sc-cd ok">✓ 可打卡</span>'
+    : `<span class="sc-cd">⛔ 冷却 ${fmtWait(st.waitMs)}</span>`;
+}
+
+/* ---------- 每日按时间完成加分 ---------- */
+function scoreDay(day,goal){
+  const logs=(day&&day.logs||[]).filter(l=>!l.ts||l.ts<=Date.now()+60000).slice().sort((a,b)=>a.ts-b.ts);
+  const cd=cooldownMin()*60000;
+  let running=0,valid=0,cheat=0,base=0,bonus=0,achievedAt=null,lastValid=-Infinity;
+  const detail=[];
+  for(const l of logs){
+    if(l.type!=='water') continue;
+    if(l.ts-lastValid<cd){ cheat++; continue; }
+    lastValid=l.ts; valid++; running+=l.ml;
+    const sl=slotOf(l.ts);
+    const b=SCORE_CFG.slot[sl];
+    base+=SCORE_CFG.base; bonus+=b;
+    detail.push({ts:l.ts,ml:l.ml,slot:sl,base:SCORE_CFG.base,bonus:b});
+    if(!achievedAt&&running>=goal) achievedAt=l.ts;
+  }
+  const milk=(logs.filter(l=>l.type==='milk')||[]).length;
+  const achieved=running>=goal;
+  let achieveBonus=0;
+  if(achievedAt){
+    const hh=new Date(achievedAt).getHours()+new Date(achievedAt).getMinutes()/60;
+    achieveBonus=SCORE_CFG.achieveLate;
+    for(const k of Object.keys(SCORE_CFG.achieveBefore).map(Number).sort((a,b)=>a-b))
+      if(hh<k){ achieveBonus=SCORE_CFG.achieveBefore[k]; break; }
+  }
+  const goalBonus=achieved?SCORE_CFG.goalBonus:0;
+  const perfect=(achieved&&milk===0)?SCORE_CFG.perfectBonus:0;
+  const penalty=milk*SCORE_CFG.milkPenalty+cheat*SCORE_CFG.cheatPenalty;
+  const total=Math.max(0,base+bonus+achieveBonus+goalBonus+perfect-penalty);
+  return {total,base,bonus,achieveBonus,goalBonus,perfect,penalty,valid,cheat,milk,
+    achieved,achievedAt,ml:running,goal,detail};
+}
+function todayScore(){
+  const day=today();
+  return scoreDay(day,day.goalSnapshot||goalOf());
+}
+/* 结算提交：同日只保留更高分，避免反复结算刷分 */
+function submitDay(dateKey,quote,mood){
+  const p=PROFILE(), day=PD()[dateKey];
+  if(!day||!(day.logs||[]).length) return null;
+  const sc=scoreDay(day,day.goalSnapshot||goalOf());
+  p.submitted=p.submitted||{};
+  const rec={date:dateKey,score:sc.total,ml:sc.ml,goal:sc.goal,valid:sc.valid,cheat:sc.cheat,
+    milk:sc.milk,achieved:sc.achieved,achievedAt:sc.achievedAt,quote:quote||'',
+    mood:mood||day.mood||S.settings.mood,at:Date.now(),code:checkCode(p.id+dateKey+sc.total+sc.valid)};
+  if(!p.submitted[dateKey]||sc.total>=p.submitted[dateKey].score) p.submitted[dateKey]=rec;
+  save();
+  return rec;   // 始终返回当次成绩，分享卡校验码与卡面一致
+}
+function profileTotal(p){
+  return Object.values(p.submitted||{}).reduce((s,r)=>s+(r.score||0),0);
+}
+function boardRows(){
+  ensureProfiles();
+  const dk=dkey();
+  const todayRows=S.profiles.map(p=>{
+    const day=(p.days||{})[dk], sc=scoreDay(day,day?.goalSnapshot||goalOf());
+    return {id:p.id,name:p.name,emoji:p.emoji,me:p.id===S.activeId,score:sc.total,
+      sub:`${sc.ml}/${sc.goal}ml · 有效 ${sc.valid} 次${sc.achieved?' · 已达标':''}`,data:sc};
+  }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  const allRows=S.profiles.map(p=>({
+    id:p.id,name:p.name,emoji:p.emoji,me:p.id===S.activeId,score:profileTotal(p),
+    sub:`${Object.keys(p.submitted||{}).length} 天成绩 · 最佳 ${Math.max(0,...Object.values(p.submitted||{}).map(r=>r.score||0))} 分`
+  })).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  return {todayRows,allRows,dk};
+}
+function checkCode(str){
+  let h=2166136261;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  return 'DW-'+h.toString(36).toUpperCase().slice(0,6).padEnd(6,'0');
+}
+
+/* ---------- 排行榜弹层 ---------- */
+let boardTab='today';
+function leaderboardHTML(){
+  ensureProfiles();
+  return `<div class="mtitle">🏆 大水排行榜</div>
+    <div class="msub">本机多档案 · 打卡冷却 ${cooldownMin()} 分钟（独立于提醒间隔）· 数据不上传</div>
+    <div class="sc-wrap" id="scWrap">
+      <div class="sc-tabs"><button data-bt="today" class="${boardTab==='today'?'on':''}">📅 今日榜</button>
+        <button data-bt="all" class="${boardTab==='all'?'on':''}">🏅 历史总榜</button></div>
+      <div class="sc-rule" id="scRule"></div>
+      <div id="scList"></div>
+      <div class="sc-new"><input id="scName" placeholder="新增本机选手名，如 阿喵" maxlength="12">
+        <button id="scAdd">+ 添加</button></div>
+      <div class="sc-mini" id="scTip"></div>
+    </div>
+    <div class="btnrow"><button class="btn ghost" id="scShare">📤 分享我的今日成绩</button>
+      <button class="btn primary" id="scClose">关闭</button></div>`;
+}
+function renderBoard(root){
+  const {todayRows,allRows}=boardRows();
+  const rows=boardTab==='today'?todayRows:allRows;
+  const rk=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':String(n);
+  root.querySelector('#scList').innerHTML=rows.map((r,i)=>`
+    <div class="sc-row ${r.me?'me':''}">
+      <div class="sc-rk ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${rk(i+1)}</div>
+      <div class="sc-nm">${esc(r.emoji||'💧')} ${esc(r.name)}${r.me?' <small>当前档案</small>':''}
+        <small>${esc(r.sub)}</small></div>
+      <div class="sc-pt">${r.score}</div>
+      <button class="btn ghost" data-sw="${r.id}" style="padding:4px 8px;font-size:10px" ${r.me?'disabled':''}>切换</button>
+      ${S.profiles.length>1&&!r.me?`<button class="btn ghost" data-rm="${r.id}" style="padding:4px 8px;font-size:10px;color:#b8615a">×</button>`:''}
+    </div>`).join('');
+  root.querySelector('#scRule').innerHTML=boardTab==='today'
+    ? `<b>今日按时间完成加分</b>：每次合规打卡 +${SCORE_CFG.base}，清晨 +${SCORE_CFG.slot.dawn} / 上午 +${SCORE_CFG.slot.morning} / 午间 +${SCORE_CFG.slot.noon} / 下午 +${SCORE_CFG.slot.afternoon} / 傍晚 +${SCORE_CFG.slot.evening} / 深夜 +${SCORE_CFG.slot.night}；越早达标奖励越高（12点前 +${SCORE_CFG.achieveBefore[12]} → 22点后 +${SCORE_CFG.achieveLate}）；达标 +${SCORE_CFG.goalBonus}、零奶茶 +${SCORE_CFG.perfectBonus}；连打 -${SCORE_CFG.cheatPenalty}/次、奶茶 -${SCORE_CFG.milkPenalty}/杯。`
+    : `<b>历史总榜</b>：累计每日结算成绩（同一天反复结算只取更高分，不刷分）。当前档案 <b>${esc(PROFILE().name)}</b>，共 ${Object.keys(PROFILE().submitted||{}).length} 天成绩。`;
+  root.querySelector('#scTip').textContent=`当前档案：${PROFILE().name} · 切换档案会连同饮水记录一起切换（数据都在本机）`;
+  root.querySelectorAll('[data-bt]').forEach(b=>b.classList.toggle('on',b.dataset.bt===boardTab));
+}
+function bindBoard(root){
+  function refresh(){ renderBoard(root); }
+  refresh();   // 打开时先渲染一次
+  // 事件委托：列表重绘后按钮依然有效
+  root.onclick=e=>{
+    const bt=e.target.closest('[data-bt]');
+    if(bt){ boardTab=bt.dataset.bt; refresh(); return; }
+    const sw=e.target.closest('[data-sw]');
+    if(sw&&!sw.disabled){
+      S.activeId=sw.dataset.sw; save(); refresh();
+      try{ if(typeof renderAll==='function')renderAll(); }catch(_){}
+      try{ if(typeof renderHUD==='function')renderHUD(); }catch(_){}
+      toast('已切换到 '+PROFILE().name); return;
+    }
+    const rm=e.target.closest('[data-rm]');
+    if(rm){
+      const p=S.profiles.find(x=>x.id===rm.dataset.rm); if(!p)return;
+      if(!confirm(`删除档案「${p.name}」及其全部饮水记录？不可撤销。`))return;
+      S.profiles=S.profiles.filter(x=>x.id!==rm.dataset.rm);
+      if(S.activeId===rm.dataset.rm) S.activeId=S.profiles[0].id;
+      save(); refresh(); try{ if(typeof renderAll==='function')renderAll(); }catch(_){}
+      return;
+    }
+    if(e.target.closest('#scAdd')){
+      const inp=root.querySelector('#scName'), name=inp.value.trim();
+      if(!name){ toast('先给选手起个名'); return; }
+      if(S.profiles.length>=8){ toast('本机最多 8 个档案'); return; }
+      const emo=['🐱','🐶','🐻','🦊','🐼','🐸','🐧','🦉'][S.profiles.length%8];
+      S.profiles.push({id:'p'+Date.now().toString(36),name:name.slice(0,12),emoji:emo,days:{},submitted:{}});
+      save(); inp.value=''; refresh(); toast('已添加选手 '+name); return;
+    }
+    if(e.target.closest('#scShare')){ try{closeModal();}catch(_){ } openShareCard({mode:'board'}); return; }
+    if(e.target.closest('#scClose')){ try{closeModal();}catch(_){ } return; }
+  };
+}
+function openBoard(){ openModal(leaderboardHTML()); bindBoard($('#modalBox')); }
+
+/* ---------- 打卡分享卡（Canvas 本机绘制） ---------- */
+function buildShareText(o){
+  const s=o.sc, p=PROFILE();
+  return `【大水计算器 · ${o.mode==='settle'?'今日心情结算':'今日打卡'}】\n`+
+    `${o.date} ${o.time} · ${locLabel()}\n`+
+    `💧 白水 ${s.ml}/${s.goal}ml（${Math.round(s.ml/s.goal*100)}%）${s.achieved?' ✓ 已达标':''}\n`+
+    `🏆 今日 ${s.total} 分 · 有效打卡 ${s.valid} 次${s.cheat?` · 拦截连打 ${s.cheat} 次`:''}\n`+
+    `💭 心情：${o.mood}${o.quote?'\n✦ '+o.quote:''}\n`+
+    `校验码 ${o.code}（本机防作弊，数据不上传）\n`+
+    `弱者喝饮料，强者喝大水。`;
+}
+function drawShareCard(o){
+  const W=640,H=960,c=document.createElement('canvas'); c.width=W;c.height=H;
+  const g=c.getContext('2d');
+  if(!g.roundRect) g.roundRect=function(x,y,w,h,r){ this.rect(x,y,w,h); return this; };
+  const grd=g.createLinearGradient(0,0,W,H);
+  grd.addColorStop(0,'#eaf3f6'); grd.addColorStop(.55,'#f7f3ea'); grd.addColorStop(1,'#e8eee6');
+  g.fillStyle=grd; g.fillRect(0,0,W,H);
+  // 装饰圆
+  g.globalAlpha=.10; g.fillStyle='#5b8fa8';
+  [[70,120,130],[580,860,170],[540,60,70]].forEach(([x,y,r])=>{g.beginPath();g.arc(x,y,r,0,7);g.fill();});
+  g.globalAlpha=1;
+  // 卡片
+  g.fillStyle='rgba(255,255,255,.92)';
+  g.beginPath(); g.roundRect(28,28,W-56,H-56,26); g.fill();
+  g.strokeStyle='rgba(91,143,168,.25)'; g.lineWidth=2; g.stroke();
+  const F='"PingFang SC","Microsoft YaHei","WenQuanYi Micro Hei",sans-serif';
+  g.textAlign='left'; g.fillStyle='#3d6d87'; g.font=`800 22px ${F}`;
+  g.fillText('💧 大水计算器',60,86);
+  g.fillStyle='#8b8276'; g.font=`600 12px ${F}`;
+  g.fillText(o.mode==='settle'?'今日心情结算 · 打卡分享':'每日打卡 · 成绩分享',60,110);
+  g.textAlign='right'; g.fillStyle='#a09788'; g.font=`600 12px ${F}`;
+  g.fillText(o.date+' '+o.time,W-60,110);
+  g.textAlign='left';
+  // 大分数
+  g.fillStyle='#3d6d87'; g.font=`800 76px ${F}`;
+  g.fillText(String(o.sc.total),60,206);
+  g.fillStyle='#6b6255'; g.font=`700 16px ${F}`; g.fillText('今日积分',60,232);
+  g.textAlign='right'; g.fillStyle='#6c9a76'; g.font=`800 20px ${F}`;
+  g.fillText(o.sc.achieved?'✓ 已达标':`${Math.round(o.sc.ml/o.sc.goal*100)}%`,W-60,196);
+  g.fillStyle='#8b8276'; g.font=`600 12px ${F}`; g.fillText(`白水 ${o.sc.ml} / ${o.sc.goal} ml`,W-60,220);
+  g.textAlign='left';
+  // 分隔
+  g.strokeStyle='rgba(90,78,62,.14)'; g.beginPath(); g.moveTo(60,250); g.lineTo(W-60,250); g.stroke();
+  // 明细
+  const items=[
+    ['🕒 达标时刻',o.sc.achievedAt?fmtTime(o.sc.achievedAt):'尚未达标'],
+    ['✅ 有效打卡',o.sc.valid+' 次'],
+    ['⛔ 拦截连打',o.sc.cheat+' 次'],
+    ['🥤 小甜水',o.sc.milk+' 杯'],
+    ['💭 今日心情',o.mood],
+    ['📍 所在位置',locLabel()]
+  ];
+  g.font=`600 14px ${F}`;
+  items.forEach((it,i)=>{
+    const x=60+(i%2)*270, y=288+Math.floor(i/2)*40;
+    g.fillStyle='#8b8276'; g.fillText(it[0],x,y);
+    g.fillStyle='#3a3630'; g.font=`700 14px ${F}`; g.fillText(String(it[1]).slice(0,14),x+112,y);
+    g.font=`600 14px ${F}`;
+  });
+  // 语录
+  if(o.quote){
+    g.fillStyle='#f2f7fa'; g.beginPath(); g.roundRect(60,418,W-120,104,14); g.fill();
+    g.fillStyle='#3d6d87'; g.font=`700 13px ${F}`; g.fillText('✦ 今日大水语录',78,444);
+    g.fillStyle='#4a5a63'; g.font=`600 13px ${F}`;
+    const q=o.quote.replace(/\s+/g,' ');
+    let line='',y=468;
+    for(const ch of q){
+      if(g.measureText(line+ch).width>W-160){ g.fillText(line,78,y); line=ch; y+=20; if(y>510)break; }
+      else line+=ch;
+    }
+    if(line&&y<=510) g.fillText(line,78,y);
+  }
+  // 得分构成
+  const bd=[`打卡 +${o.sc.base}`,`时段 +${o.sc.bonus}`,`早达标 +${o.sc.achieveBonus}`,
+    `达标 +${o.sc.goalBonus}`,`零奶茶 +${o.sc.perfect}`,`扣分 -${o.sc.penalty}`];
+  g.font=`600 11px ${F}`;
+  bd.forEach((t,i)=>{
+    const x=60+(i%3)*174, y=556+Math.floor(i/3)*30;
+    g.fillStyle=o.sc.penalty&&i===5?'#f6e9e5':'#eef4f7';
+    g.beginPath(); g.roundRect(x,y-15,160,24,12); g.fill();
+    g.fillStyle=o.sc.penalty&&i===5?'#a2564e':'#4d7a91'; g.fillText(t,x+9,y+1);
+  });
+  // 榜单
+  if(o.boardLine){
+    g.fillStyle='#f7f3ea'; g.beginPath(); g.roundRect(60,632,W-120,54,12); g.fill();
+    g.fillStyle='#7a5a2c'; g.font=`700 13px ${F}`; g.fillText('🏆 '+o.boardLine,78,664);
+  }
+  // 校验码
+  g.fillStyle='#3d6d87'; g.font=`800 15px ui-monospace,Menlo,Consolas,monospace`;
+  g.fillText(o.code,60,740);
+  g.fillStyle='#8b8276'; g.font=`600 11px ${F}`;
+  g.fillText('本机防作弊校验码 · 打卡冷却 '+cooldownMin()+' 分钟（独立于提醒间隔）',60,762);
+  // 落款
+  g.strokeStyle='rgba(90,78,62,.14)'; g.beginPath(); g.moveTo(60,800); g.lineTo(W-60,800); g.stroke();
+  g.fillStyle='#3a3630'; g.font=`800 18px ${F}`; g.fillText('弱者喝饮料，强者喝大水。',60,838);
+  g.fillStyle='#a09788'; g.font=`600 11px ${F}`;
+  g.fillText('数据仅存本机 · 不联网 · 不上传 · 大水理论是网络梗，不是医学结论',60,868);
+  g.textAlign='right'; g.fillStyle='#8b8276'; g.font=`600 11px ${F}`;
+  g.fillText(`档案：${PROFILE().name}`,W-60,890);
+  return c.toDataURL('image/png');
+}
+function openShareCard(opts){
+  opts=opts||{};
+  const mode=opts.mode||'daily';
+  const sc=todayScore();
+  const rec=submitDay(dkey(),opts.quote||'',opts.mood||S.settings.mood);
+  const mood=opts.mood||today().mood||S.settings.mood;
+  const date=typeof clockDate==='function'?clockDate():(new Date().getMonth()+1)+'月'+new Date().getDate()+'日';
+  const time=fmtTime(Date.now());
+  const code=(rec&&rec.code)||checkCode(PROFILE().id+dkey()+sc.total+sc.valid);
+  const {todayRows,allRows}=boardRows();
+  const ti=todayRows.findIndex(r=>r.me)+1, ai=allRows.findIndex(r=>r.me)+1;
+  const boardLine=`今日榜第 ${ti} / ${todayRows.length} 名　·　历史总榜第 ${ai} / ${allRows.length} 名（累计 ${profileTotal(PROFILE())} 分）`;
+  const o={mode,sc,mood,date,time,code,boardLine,quote:opts.quote||''};
+  const png=drawShareCard(o), text=buildShareText(o);
+  openModal(`<div class="mtitle">📤 ${mode==='settle'?'今日心情结算 · 打卡分享':'今日打卡分享'}</div>
+    <div class="msub">${esc(date)} ${esc(time)} · ${esc(mood)} · ${sc.total} 分 · ${esc(code)}</div>
+    <img class="sc-share" id="scImg" src="${png}" alt="打卡分享卡">
+    <div class="sc-code" id="scCode">${esc(code)}</div>
+    <div class="btnrow"><button class="btn ghost" id="scCopy">复制文案</button>
+      <button class="btn ghost" id="scDl">保存图片</button>
+      <button class="btn primary" id="scSys">系统分享</button></div>
+    <div class="btnrow"><button class="btn ghost" id="scBack">返回排行榜</button>
+      <button class="btn ghost" id="scShut">关闭</button></div>
+    <div class="hint" style="font-size:10px;line-height:1.7;margin-top:10px">
+      卡片与成绩在本机生成，校验码用于核对「${cooldownMin()} 分钟冷却」下的打卡记录；不联网、不上传，也不是联网认证榜单。</div>`);
+  $('#scCopy').onclick=async()=>{
+    try{ await navigator.clipboard.writeText(text); toast('文案已复制'); }
+    catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove(); toast('文案已复制'); }
+  };
+  $('#scDl').onclick=()=>{ const a=document.createElement('a'); a.href=png;
+    a.download=`大水打卡_${dkey()}_${PROFILE().name}.png`; a.click(); toast('图片已保存'); };
+  $('#scSys').onclick=async()=>{
+    try{
+      const blob=await (await fetch(png)).blob();
+      const file=new File([blob],`大水打卡_${dkey()}.png`,{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]}))
+        await navigator.share({title:'大水计算器 · 今日打卡',text,files:[file]});
+      else if(navigator.share) await navigator.share({title:'大水计算器',text});
+      else throw 0;
+    }catch(e){ $('#scDl').click(); toast('当前环境不支持系统分享，已保存图片'); }
+  };
+  $('#scBack').onclick=()=>openBoard();
+  $('#scShut').onclick=()=>{ try{closeModal();}catch(e){} };
+}
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const KEY = 'dashui.pet.v1';
+
+const MOODS = ['通透','摸鱼','emo','烦躁','犯困','开心'];
+const WEATHER_KINDS = ['晴','热','雨','阴','冷','风'];
+
+const FALLBACK_LOC = { province:'福建省', city:'泉州市', district:'丰泽区',
+  lat:24.896, lng:118.605, source:'default' };
+
+const DEFAULT = {
+  settings:{
+    goal:1700, interval:30, checkinCooldown:30,
+    mood:'通透', sound:true, patrol:true, notify:true, autoGoalByWeather:true,
+    llm:{ endpoint:'', key:'', model:'gpt-4o-mini' }
+  },
+  location:null, locatedOnce:false,
+  days:{}, profiles:[], activeId:'me',
+  lastRemindAt:0, lastPatrolAt:0, pet:null, manualWeather:'', createdAt:Date.now()
+};
+
+let S = load();
+let weather = { kind:'晴', temp:null, desc:'', code:0, live:false, at:0 };
+let quoteCtx = null;
+let cameraOK = false;
+
+function load(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!raw) return structuredClone(DEFAULT);
+    return Object.assign(structuredClone(DEFAULT), raw,
+      { settings: Object.assign(structuredClone(DEFAULT.settings), raw.settings||{},
+          { llm: Object.assign(structuredClone(DEFAULT.settings.llm), (raw.settings||{}).llm||{}) }) });
+  }catch(e){ return structuredClone(DEFAULT); }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function dkey(d=new Date()){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function today(){ return PD()[dkey()] ||= { logs:[], reminds:[] }; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTime(ts){ const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function rnd(a){ return a[Math.floor(Math.random()*a.length)]; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+/* ---------------- 计算 ---------------- */
+function waterOf(day){ return (day.logs||[]).filter(l=>l.type==='water').reduce((s,l)=>s+l.ml,0); }
+function milkOf(day){ return (day.logs||[]).filter(l=>l.type==='milk'); }
+function goalOf(){
+  const g = Number(S.settings.goal)||1700;
+  if(S.settings.autoGoalByWeather && weather.live && weather.kind==='热') return g+300;
+  return g;
+}
+function pctOf(){ return waterOf(today())/goalOf(); }
+
+function streak(){
+  let n=0; const d=new Date();
+  for(let i=0;i<400;i++){
+    const day=PD()[dkey(d)];
+    const w=day?waterOf(day):0;
+    const g=day&&day.goalSnapshot?day.goalSnapshot:(Number(S.settings.goal)||1700);
+    if(w>=g) n++;
+    else if(i===0){ d.setDate(d.getDate()-1); continue; } // 今天还没喝够，允许从昨天起算连续天数
+    else break;
+    d.setDate(d.getDate()-1);
+  }
+  return n;
+}
+
+/* ---------------- 天气 ---------------- */
+function wmoKind(code,t){
+  if(t!==null && t>=30) return '热';
+  if(code===0) return '晴';
+  if([1,2,3].includes(code)) return t!==null&&t<=8?'冷':'阴';
+  if([45,48].includes(code)) return '阴';
+  if((code>=51&&code<=67)||(code>=80&&code<=82)||(code>=95)) return '雨';
+  if(code>=71&&code<=77) return '冷';
+  if(t!==null&&t<=9) return '冷';
+  return '阴';
+}
+const WMO = {0:'晴',1:'大部晴朗',2:'局部多云',3:'阴',45:'雾',48:'雾凇',51:'毛毛雨',61:'小雨',63:'中雨',65:'大雨',
+  80:'阵雨',81:'强阵雨',82:'暴雨',95:'雷雨',71:'小雪',73:'中雪',75:'大雪'};
+function locLabel(){
+  const l=S.location||FALLBACK_LOC;
+  return l.province===l.city ? `${l.province}·${l.district}` : `${l.province}·${l.city}·${l.district}`;
+}
+function locShort(){ const l=S.location||FALLBACK_LOC; return (l.province===l.city?'':l.city)+l.district; }
+async function fetchWeather(force){
+  if(!force && weather.live && Date.now()-weather.at < 30*60*1000) return;
+  const loc=S.location||FALLBACK_LOC, label=locLabel();
+  try{
+    const u=new URL('https://api.open-meteo.com/v1/forecast');
+    u.search=new URLSearchParams({latitude:loc.lat,longitude:loc.lng,
+      current:'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m',
+      timezone:(Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Shanghai')});
+    const ctl=new AbortController(); const timer=setTimeout(()=>ctl.abort(),7000);
+    const r=await fetch(u,{signal:ctl.signal}); clearTimeout(timer);
+    if(!r.ok) throw 0;
+    const j=await r.json(); const c=j.current||{};
+    const t=typeof c.temperature_2m==='number'?Math.round(c.temperature_2m):null;
+    const code=c.weather_code??0;
+    weather={kind:wmoKind(code,t),temp:t,code,desc:WMO[code]||'多云',humidity:c.relative_humidity_2m,
+      wind:c.wind_speed_10m,feel:c.apparent_temperature,live:true,at:Date.now(),city:label};
+  }catch(e){
+    weather={kind:S.settings.manualWeather||'晴',temp:null,desc:'（离线，手动设定）',code:0,live:false,at:Date.now(),city:label};
+  }
+  renderWeather(); renderProgress();
+}
+function applyLocation(loc,quiet){
+  S.location={...loc}; S.locatedOnce=true; save();
+  fetchWeather(true); renderWeather(); renderProgress(); makeQuote();
+  if(!quiet) toast('📍 位置已更新：'+locLabel());
+}
+async function initLocation(){
+  if(S.locatedOnce && S.location){ renderWeather(); return; }
+  S.locatedOnce=true; save();
+  const r=await geoLocate();
+  if(r.ok){
+    applyLocation({...r.area,lat:r.lat,lng:r.lng,source:'gps'},true);
+    toast('📍 已定位到 '+r.area.province+' / '+r.area.city+' / '+r.area.district,3200);
+  }else{
+    S.location={...FALLBACK_LOC}; save();
+    toast('定位取不到：'+(GEO_REASON[r.reason]||r.reason)+'，请自己选一下',3800);
+    openLocationPicker();
+  }
+}
+function openLocationPicker(){
+  const cur=S.location||FALLBACK_LOC;
+  openModal(`<div class="mtitle">📍 选择你所在的位置</div>
+    <div class="msub">定位没成功，选到「省 / 市 / 区·县·县级市」这一级就行</div>
+    ${geoPickerHTML(cur)}
+    <div class="mbtns"><button class="btn ghost" id="locSkip">先用默认位置</button></div>`);
+  geoBindPicker($('#modalBox'),cur,loc=>{
+    applyLocation(loc,true); closeModal(); toast('📍 已设为 '+locLabel()); makeQuote();
+  },toast);
+  $('#locSkip').onclick=()=>{ applyLocation(FALLBACK_LOC,true); closeModal(); toast('已用默认位置，可在设置里改'); };
+}
+
+/* ---------------- 大水语录引擎 ---------------- */
+const GOLDEN = [
+  '弱者喝饮料，强者喝大水。','小水解渴，大水解人生。','请摆脱你的小水思维，拥抱大水。',
+  '人身上一切精神内耗，都是因为水喝得不够多。','没有抽象的薄肌，只有具体的喝大水。',
+  '严肃进入大水时代。','500ml 叫小水，1.5L 才配叫大水。',
+  '喝完整个人都通透了，工作也不烧心了。','薄肌、大睡、大水，极简健康三件套，先从最好做的那件开始。',
+  '别用饮料代替白水，那是小甜水，不是大水。'
+];
+const TIME_WORD = {
+  dawn:['刚开机','晨起第一口','天刚亮','还没完全醒'],
+  morning:['上午场','工位刚坐热','会议间隙','摸鱼黄金档'],
+  noon:['饭后','午休边缘','饭点刚过','正午'],
+  afternoon:['下午三点半','犯困临界点','续命时段','日头偏西'],
+  evening:['下班前后','天擦黑','收工时刻','夜色刚起'],
+  night:['这个点还醒着','深夜','该大睡了','屏幕还亮着']
+};
+const WEATHER_WORD = {
+  热:['外面晒得能煎蛋','空调房正偷偷抽干你','热得发慌','汗在替你流失水分'],
+  晴:['天光透亮','太阳挺好','窗外亮堂堂'], 雨:['外面在下雨','雨声是白噪音','天在补水，你别落后'],
+  阴:['天有点闷','云压得低','光线软塌塌'], 冷:['风挺凉','屋里干得慌','冷空气不渴，但你渴'],
+  风:['风有点大','吹得人脸干','窗外在呼呼吹']
+};
+/* 深夜不出现「太阳挺好」这类白天词，按实际时段换一套 */
+const NIGHT_WEATHER_WORD = {
+  热:['夜里还闷着','空调房正偷偷抽干你','热气没散','夜里也得补水'],
+  晴:['窗外月色挺亮','夜空清透','夜里星子看得清'],
+  雨:['外面还在下雨','雨声是白噪音','夜雨没停'],
+  阴:['云压得低','夜色闷沉沉','窗外灰蒙蒙'],
+  冷:['夜风挺凉','屋里干得慌','冷气往领子里钻'],
+  风:['窗外呼呼吹','夜风有点大','吹得人脸干']
+};
+function weatherWord(kind,slot){
+  const w=(slot==='night'?NIGHT_WEATHER_WORD[kind]:WEATHER_WORD[kind])||WEATHER_WORD[kind]||WEATHER_WORD['阴'];
+  return rnd(w);
+}
+const MOOD_WORD = {
+  通透:['心态很通透','整个人是通的','不内耗中'], 摸鱼:['正在摸鱼','手没在键盘上','工位隐身中'],
+  emo:['有点 emo','心里潮潮的','情绪在低谷'], 烦躁:['心里有点毛躁','火气有点大','万事都想叹气'],
+  犯困:['眼皮打架','脑子转不动','困到发呆'], 开心:['心情不错','嘴角是向上的','今天挺顺']
+};
+const PROGRESS_WORD = [
+  [0.001,['大水瓶还是满的，一滴没动','今日大水 KPI 挂零','桌上的大水还只是个摆件']],
+  [.3,['进度条刚起步','才刚开了个头','离通透还远']],
+  [.7,['半程没到，小水思维要不得','过了一半','正在稳步变通透']],
+  [1,['就差临门一脚','胜利在望','最后几口的事']],
+  [1.3,['今日 KPI 已完成','已经达标了','大水任务收工']],
+  [99,['别猛灌，肾脏每小时只排 800~1000ml','喝够了，见好就收','再灌就要水中毒了']]
+];
+const ACTION = ['起来吨一口。','拧开瓶盖，仰头，灌。','现在，立刻，喝大水。',
+  '少量多次，这一口 100ml 就够。','喝完这口，内耗少一点。','别等口渴，渴了就已经晚了。'];
+const NIGHT_ACTION = ['小口抿两下就好，别灌完再失眠。','喝一口就去大睡，理论与理论不冲突。'];
+const CELEBRATE = ['今日封瓶，收工。','把大水瓶放稳，明天继续。','通透达成，内耗清零。','见好就收，可以安心去大睡了。'];
+
+function timeSlot(){ const h=new Date().getHours();
+  if(h<9)return'dawn'; if(h<12)return'morning'; if(h<14)return'noon';
+  if(h<18)return'afternoon'; if(h<22)return'evening'; return'night'; }
+function progressWord(p){
+  for(const [lim,arr] of PROGRESS_WORD){ if(p<lim) return rnd(arr); }
+  return rnd(PROGRESS_WORD.at(-1)[1]);
+}
+function localQuote(ctx){
+  const night = ctx.slot==='night';
+  const sin = ctx.milkToday>0;
+  let s;
+  if(sin && Math.random()<.6){
+    s = `AI 已留档你今天的 ${ctx.milkToday} 杯小甜水。${rnd(['自首不丢人，继续灌大水才体面。','奶茶不解人生，大水才解。','用小甜水对抗内耗，方向反了。'])}`;
+  }else{
+    const parts = [
+      `${rnd(TIME_WORD[ctx.slot])}，${weatherWord(ctx.kind,ctx.slot)}，${rnd(MOOD_WORD[ctx.mood])}——`,
+      `${progressWord(ctx.pct)}。`,
+      night ? rnd(NIGHT_ACTION) : (ctx.pct>=1 ? rnd(CELEBRATE) : rnd(ACTION))
+    ];
+    s = parts.join('');
+    if(Math.random()<.55) s += ' ' + rnd(GOLDEN);
+  }
+  return { text:s, tags:[
+    '⏰ '+ctx.date+' '+ctx.time+' '+({dawn:'清晨',morning:'上午',noon:'午间',afternoon:'下午',evening:'傍晚',night:'深夜'}[ctx.slot]),
+    '📍 '+ctx.place,
+    `🌤 ${ctx.temp!==null?ctx.temp+'℃ ':''}${ctx.kind}`,
+    '💭 '+ctx.mood, '📊 '+Math.round(ctx.pct*100)+'%'
+  ]};
+}
+function clockDate(){ const d=new Date();
+  return (d.getMonth()+1)+'月'+d.getDate()+'日 '+['周日','周一','周二','周三','周四','周五','周六'][d.getDay()]; }
+function buildCtx(){
+  const day=today(), d=new Date();
+  return { slot:timeSlot(), kind:weather.live?weather.kind:(S.settings.manualWeather||weather.kind),
+    mood:S.settings.mood, pct:pctOf(), milkToday:milkOf(day).length,
+    city:locLabel(), place:locShort(), temp:weather.temp, desc:weather.desc,
+    date:clockDate(), time:fmtTime(Date.now()),
+    ml:waterOf(day), goal:goalOf(), hour:d.getHours() };
+}
+async function makeQuote(){
+  const ctx=buildCtx(); quoteCtx=ctx;
+  $('#engineTag').textContent='本地语录引擎 · 生成中';
+  const q=localQuote(ctx);
+  const cfg=S.settings.llm;
+  if(cfg.endpoint && cfg.key){
+    try{
+      $('#engineTag').textContent='在线模型 · 生成中';
+      const ctl=new AbortController(); const timer=setTimeout(()=>ctl.abort(),9000);
+      const r=await fetch(cfg.endpoint.replace(/\/+$/,'')+'/chat/completions',{
+        method:'POST', signal:ctl.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+        body:JSON.stringify({model:cfg.model, temperature:1.05, max_tokens:120, messages:[
+          {role:'system',content:'你是「大水监察司」的桌宠，只输出一句 25~55 字的中文大水语录。背景：2026年网络梗「大水理论」，口号「弱者喝饮料，强者喝大水」「小水解渴，大水解人生」，主张用1.5L以上白水替代奶茶咖啡，认为精神内耗是水喝少了。语气要魔性、笃定、带点抽象幽默，不要说教，不要提医学建议，不要加引号、不要解释、不要分点。'},
+          {role:'user',content:`当前：${ctx.date} ${ctx.time}（${ctx.slot}）、${ctx.city}${ctx.temp!==null?ctx.temp+'℃':''}${ctx.kind}、用户心情${ctx.mood}、今日饮水${ctx.ml}/${ctx.goal}ml（${Math.round(ctx.pct*100)}%）、今日偷喝奶茶${ctx.milkToday}杯。请生成一句贴合这些条件的大水语录。`}
+        ]})
+      });
+      clearTimeout(timer);
+      if(r.ok){
+        const j=await r.json();
+        const t=(j.choices?.[0]?.message?.content||'').trim().replace(/^["“]|["”]$/g,'');
+        if(t){ showQuote({text:t,tags:localQuote(ctx).tags},'在线模型 · '+cfg.model); return; }
+      }
+    }catch(e){/* 静默回退 */}
+  }
+  showQuote(q,'本地语录引擎');
+}
+function showQuote(q,engine){
+  $('#quoteText').textContent=q.text;
+  $('#quoteMeta').innerHTML=q.tags.map(t=>`<span>${esc(t)}</span>`).join('');
+  $('#engineTag').textContent=engine;
+  $('#quoteTime').textContent=fmtTime(Date.now())+' 生成';
+  say(q.text,5200);
+}
+
+/* ---------------- 桌宠说话 / 音效 ---------------- */
+let bubbleTimer=null;
+function say(text,ms=4200){
+  $('#bubbleText').textContent=text;
+  $('#bubble').classList.add('show');
+  $('#pet').classList.remove('talk'); void $('#pet').offsetWidth; $('#pet').classList.add('talk');
+  clearTimeout(bubbleTimer); bubbleTimer=setTimeout(()=>$('#bubble').classList.remove('show'),ms);
+  clearTimeout(say._t); say._t=setTimeout(()=>$('#pet').classList.remove('talk'),1100);
+}
+function toast(t,ms=2600){
+  const el=$('#toast'); el.textContent=t; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),ms);
+}
+function beep(){
+  if(!S.settings.sound) return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    const ac=new AC(), o=ac.createOscillator(), g=ac.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(540,ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(240,ac.currentTime+.16);
+    g.gain.setValueAtTime(.0001,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.14,ac.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.24);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+.26);
+    setTimeout(()=>ac.close(),600);
+  }catch(e){}
+}
+
+/* ---------------- 渲染 ---------------- */
+function renderProgress(){
+  const day=today(), ml=waterOf(day), goal=goalOf(), p=pctOf();
+  day.goalSnapshot=goal; save();
+  const pct=Math.round(p*100);
+  $('#ringBar').style.strokeDashoffset = 314*(1-clamp(p,0,1));
+  $('#pctTxt').textContent=pct+'%';
+  $('#mlTxt').textContent=ml; $('#goalTxt').textContent=goal;
+  $('#goalLabel').textContent='目标 '+goal+'ml'+(goal!==Number(S.settings.goal)?'（热天 +300）':'');
+  const s=milkOf(day).length;
+  let desc, cls, txt;
+  if(p===0){ desc='大水瓶还是满的，一滴没动。'; cls='no'; txt='未达标'; }
+  else if(p<1){ desc=`还差 ${goal-ml}ml，约 ${Math.ceil((goal-ml)/250)} 杯。`; cls='no'; txt='补水进行中'; }
+  else if(p<=1.3){ desc='今日 KPI 完成，整个人都通透了。'; cls='ok'; txt='✓ 已达标'; }
+  else { desc='已经喝够了，别猛灌，少量多次。'; cls='over'; txt='已超标'; }
+  if(s) desc+=` ⚠️ 另有 ${s} 杯小甜水留档。`;
+  $('#progDesc').textContent=desc;
+  const b=$('#progBadge'); b.className='badge '+cls; b.textContent=txt;
+  $('#petTag').textContent='今日 '+pct+'%';
+  const fy=212-196*clamp(p,0,1);
+  $('#waterFill').setAttribute('y',fy); $('#waterFill').setAttribute('height',212-fy);
+  $('#wave').setAttribute('d',`M0 ${fy} Q25 ${fy-7} 50 ${fy} T100 ${fy} T150 ${fy} T200 ${fy}`);
+  $('#mouth').setAttribute('d', p>=1?'M90 156 Q100 170 110 156':(p<.3?'M93 161 Q100 156 107 161':'M92 158 Q100 166 108 158'));
+  $('#headSub').textContent=`大水时代 · 第 ${Object.keys(PD()).length} 天`+(S.settings.interval===1?' · 演示模式':'');
+}
+function renderLogs(){
+  const logs=[...today().logs].sort((a,b)=>b.ts-a.ts);
+  $('#logCount').textContent=logs.length+' 笔';
+  $('#logList').innerHTML = logs.length? logs.map(l=>`
+    <div class="logrow">
+      <div class="ic ${l.type==='milk'?'milk':''}">${l.type==='milk'?'🥤':'💧'}</div>
+      <div class="t">${fmtTime(l.ts)}</div>
+      <div class="n">${esc(l.note||(l.type==='milk'?'偷喝奶茶 · 已留档':'喝大水'))}${l.photo?' 📷':''}</div>
+      <div class="v ${l.type==='milk'?'milk':''}">${l.type==='milk'?'自首':'+'+l.ml+'ml'}</div>
+      <button class="del" data-id="${l.id}" title="删除">×</button>
+    </div>`).join('') : '<div class="empty">今天还没有记录，先吨一口吧</div>';
+}
+function renderWeek(){
+  const cols=[]; const d=new Date(); d.setDate(d.getDate()-6);
+  for(let i=0;i<7;i++){
+    const k=dkey(d), day=PD()[k], g=day?.goalSnapshot||Number(S.settings.goal)||1700;
+    const w=day?waterOf(day):0;
+    const h=clamp(w/g,0,1)*62;
+    cols.push(`<div class="wcol"><div class="wbar ${w>=g?'ok':(w?'':'miss')}" style="height:${Math.max(3,h)}px" title="${k} ${w}ml"></div>
+      <div class="wlab">${i===6?'今天':(d.getMonth()+1)+'/'+d.getDate()}</div></div>`);
+    d.setDate(d.getDate()+1);
+  }
+  $('#weekChart').innerHTML=cols.join('');
+  $('#streakTxt').textContent='连续达标 '+streak()+' 天';
+}
+function renderWeather(){
+  const w=weather, l=S.location||FALLBACK_LOC;
+  $('#locLine').innerHTML=`📍 ${l.province===l.city?esc(l.province)+' / '+esc(l.district):esc(l.province)+' / '+esc(l.city)+' / '+esc(l.district)}`+
+    ` <span style="font-size:10px;color:#8aa7b8;font-weight:600">${l.source==='gps'?'GPS 定位':(l.source==='search'?'搜索指定':(l.source==='default'?'默认':'手动选择'))}</span>`;
+  $('#weatherLine').innerHTML = w.live
+    ? `<b style="color:var(--deep)">${esc(w.desc)} ${w.temp!==null?w.temp+'℃':''}</b>　体感 ${w.feel!==undefined?Math.round(w.feel)+'℃':'—'}　湿度 ${w.humidity??'—'}%<br><span style="font-size:11px;color:#8aa7b8">实时天气来自 Open-Meteo，30 分钟刷新</span>`
+    : `天气接口没连上，手动选一个天气也能生成语录。`;
+  $('#weatherSrc').textContent=w.live?'实时天气':'手动天气';
+  $('#weatherChips').innerHTML=WEATHER_KINDS.map(k=>
+    `<button class="chip ${((w.live?w.kind:S.settings.manualWeather)===k)?'on':''}" data-w="${k}">${k}</button>`).join('');
+}
+function renderMoods(){
+  $('#moodChips').innerHTML=MOODS.map(m=>
+    `<button class="chip ${S.settings.mood===m?'on':''}" data-mood="${m}">${m}</button>`).join('');
+}
+function updateClock(){
+  const d=new Date();
+  $('#heroClock').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  $('#heroDate').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日 · '+['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+  const t=new Date((S.lastRemindAt||Date.now())+(Number(S.settings.interval)||30)*60000);
+  const next=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+  $('#heroClock').title=`当前 ${$('#heroDate').textContent} ${$('#heroClock').textContent} · 下次提醒约 ${next}`;
+  $('#heroDate').title=$('#heroClock').title;
+}
+function renderScore(){
+  const sc=todayScore(), st=checkinState();
+  $('#scoreLine').innerHTML=`今日 <b style="font-size:17px;color:var(--deep)">${sc.total}</b> 分 · 有效打卡 ${sc.valid} 次`+
+    (sc.cheat?` · <span style="color:#a2564e">拦截连打 ${sc.cheat} 次</span>`:'')+
+    (sc.achieved?' · <b style="color:#6c9a76">已达标</b>':'');
+  $('#cooldownLine').innerHTML=cooldownChip()+
+    ` <span style="font-size:10px;color:#8aa7b8">${cooldownMin()} 分钟内只能打卡一次</span>`;
+  $('#scoreTag').textContent='今日榜第 '+(boardRows().todayRows.findIndex(r=>r.me)+1)+' 名';
+}
+function renderAll(){ renderMoods(); renderWeather(); renderProgress(); renderScore(); renderLogs(); renderWeek(); updateClock(); }
+
+/* ---------------- 记录动作 ---------------- */
+function addWater(ml){
+  ml=Math.round(Number(ml));
+  if(!ml||ml<1||ml>3000){ toast('请输入 1~3000 之间的 ml'); return; }
+  if(!guardCheckin()) return;   // 防作弊：冷却期内不记第二笔
+  const day=today();
+  const hourAgo=Date.now()-3600*1000;
+  const hourSum=day.logs.filter(l=>l.type==='water'&&l.ts>hourAgo).reduce((s,l)=>s+l.ml,0);
+  let note = ml>=1500?'整瓶大水 · 1.5L，配叫大水':(ml<=100?'小水一口':'喝大水');
+  day.logs.push({id:uid(),ts:Date.now(),ml,type:'water',note});
+  save(); renderAll(); beep();
+  if(ml>500 || hourSum+ml>1000){
+    toast('⚠️ 别猛灌：肾脏每小时约排 800~1000ml，少量多次更稳',4200);
+  }else{
+    toast(`+${ml}ml 已记下，${rnd(['通透 +1','内耗 -1','大水时代 +1'])}`);
+  }
+  const p=pctOf();
+  if(p>=1 && p-ml/goalOf()<1) say('叮！今日大水 KPI 完成，整个人都通透了。小水解渴，大水解人生。',6000);
+  else say(rnd(['吨吨吨，记下了。','这一口，内耗少一点。','很好，继续保持大水思维。']),3000);
+  makeQuote();
+}
+function maybePatrol(){
+  if(!S.settings.patrol) return;
+  if($('#mask').classList.contains('show')) return;
+  if(Date.now()-(S.lastPatrolAt||0) < 20*60*1000) return;
+  S.lastPatrolAt=Date.now(); save();   // 每 20 分钟最多检查一次，检查即计时，避免反复骚扰
+  if(Math.random()>0.18) return;
+  openPatrol();
+}
+
+/* ---------------- 奶茶偷拍 & 自首 ---------------- */
+const VERDICTS = [
+  '经 AI 比对，杯中液体呈奶白色，含糖量存疑。依据《大水理论》第一条：弱者喝饮料，强者喝大水。',
+  '监察司注意到你放下了大水瓶，拿起了小甜水。精神内耗的成因，已锁定。',
+  '证据清晰，不必狡辩。奶茶不计入有效补水，且建议立刻补一杯大水赎罪。',
+  '你以为关掉摄像头就没事了？大水监察司从不打烊。自首从宽，抗拒留档。',
+  '一杯奶茶的钱，够买三瓶 1.5L 大水。这笔账，AI 替你算好了。'
+];
+async function capturePhoto(){
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw 0;
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'},audio:false});
+    cameraOK=true;
+    const v=document.createElement('video'); v.srcObject=stream; v.playsInline=true; v.muted=true;
+    await v.play();
+    await new Promise(r=>setTimeout(r,420));
+    const c=document.createElement('canvas'); c.width=320; c.height=240;
+    c.getContext('2d').drawImage(v,0,0,320,240);
+    const url=c.toDataURL('image/jpeg',.72);
+    stream.getTracks().forEach(t=>t.stop());
+    return {url,source:'camera'};
+  }catch(e){
+    return {url:null,source:'denied'};
+  }
+}
+function placeholderPhoto(){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240">
+    <rect width="320" height="240" fill="#eef6fb"/>
+    <circle cx="160" cy="92" r="46" fill="#d5e9f4"/>
+    <rect x="128" y="140" width="64" height="72" rx="8" fill="#fff4e6" stroke="#f0cda0" stroke-width="3"/>
+    <text x="160" y="184" font-size="15" font-weight="bold" fill="#c88b4a" text-anchor="middle" font-family="sans-serif">奶茶</text>
+    <text x="160" y="228" font-size="12" fill="#8aa7b8" text-anchor="middle" font-family="sans-serif">AI 速写 · 摄像头不可用</text>
+    <text x="160" y="42" font-size="14" fill="#6d90a6" text-anchor="middle" font-family="sans-serif">📷 证据缺失，已凭供词立案</text>
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+async function selfReport(){
+  closeModal();
+  toast('📸 AI 偷拍中，请保持自首姿势…',1800);
+  const {url,source}=await capturePhoto();
+  const photo=url||placeholderPhoto();
+  const day=today();
+  const rec={id:uid(),ts:Date.now(),ml:0,type:'milk',note:'偷喝奶茶 · 已自首',photo,source};
+  day.logs.push(rec); save(); renderAll(); beep();
+  showNotice(rec,source);
+  say(rnd(['抓到了。自首从宽，补一杯大水。','奶茶不解人生，大水才解。','已留档，请立刻回到大水时代。']),6000);
+  makeQuote();
+}
+function showNotice(rec,source){
+  const no='DS-'+dkey().replace(/-/g,'')+'-'+String(milkOf(today()).length).padStart(2,'0');
+  const wtxt=weather.live?`${esc(weather.city)} ${esc(weather.desc)} ${weather.temp??''}℃`:'离线';
+  openModal(`
+    <div class="mtitle">🚨 大水监察司 · 自首通知书</div>
+    <div class="msub">编号 ${no}　·　本记录仅保存在本机浏览器</div>
+    <div class="notice">
+      <div class="nline"><b>当事人：</b>本机用户　<b>时间：</b>${fmtTime(rec.ts)}</div>
+      <div class="nline"><b>现场：</b>${wtxt}　<b>违规物：</b>奶茶 / 小甜水 ×1</div>
+      <img class="photo" src="${rec.photo}" alt="AI 抓拍证据">
+      <div class="stamp">已自首</div>
+      <div class="nline" style="margin-top:8px"><b>取证方式：</b>${source==='camera'?'AI 摄像头抓拍':'供词立案（摄像头未授权，用速写代替）'}</div>
+      <div class="verdict"><b>AI 判词：</b>${esc(rnd(VERDICTS))}</div>
+    </div>
+    <div class="mbtns">
+      <button class="btn ghost" id="nClose">先不认</button>
+      <button class="btn primary" id="nRedeem">补一杯大水赎罪 +250ml</button>
+    </div>
+    <div class="hint" style="font-size:10px;color:#9ab3c1;margin-top:12px;line-height:1.6">
+      隐私说明：照片只存于本机 localStorage，不会上传。可在「今日流水」删除该记录一并清除。</div>`);
+  $('#nClose').onclick=()=>{ closeModal(); toast('已留档观察，大水监察司会盯着你的。'); };
+  $('#nRedeem').onclick=()=>{ closeModal(); if(guardCheckin()){ addWater(250); toast('赎罪成功，判词已从轻。'); } else toast('刚记过一笔，赎罪稍后再补，喵'); };
+}
+function openPatrol(){
+  openModal(`
+    <div class="mtitle">🔍 AI 随机巡检</div>
+    <div class="msub">大水监察司例行抽查，每 20 分钟最多一次</div>
+    <div style="font-size:13px;line-height:1.8;color:#3f6479;padding:6px 0 4px">
+      系统怀疑你手边出现了一杯<b>小甜水</b>。<br>请配合拍照检查，或心虚地拒绝。</div>
+    <div class="mbtns">
+      <button class="btn ghost" id="pNo">心虚地拒绝</button>
+      <button class="btn warn" id="pYes">配合检查 / 自首</button>
+    </div>`);
+  $('#pNo').onclick=()=>{ closeModal(); say('……记下了。下次巡检会更突然。',4000); };
+  $('#pYes').onclick=selfReport;
+}
+
+/* ---------------- 提醒 ---------------- */
+function remind(reason){
+  S.lastRemindAt=Date.now(); today().reminds.push(Date.now()); save();
+  beep();
+  const q=localQuote(buildCtx());
+  say('⏰ '+q.text,7000);
+  toast('⏰ 半小时到，起来喝大水');
+  makeQuote();
+  if(S.settings.notify && 'Notification' in window && Notification.permission==='granted'){
+    try{ new Notification('大水计算器 · 该喝大水了',{body:q.text,tag:'dashui'}); }catch(e){}
+  }
+  renderLogs();
+  maybePatrol();
+}
+function tick(){
+  const mins=Number(S.settings.interval)||30;
+  const last=S.lastRemindAt||Date.now();
+  if(!S.lastRemindAt){ S.lastRemindAt=Date.now(); save(); return; }
+  if(Date.now()-last >= mins*60*1000) remind();
+}
+
+/* ---------------- 结算 ---------------- */
+function openReport(){
+  const day=today(), ml=waterOf(day), goal=goalOf(), p=pctOf(), sins=milkOf(day).length;
+  const ok=ml>=goal;
+  let verdict;
+  if(ml===0) verdict='今日零大水。大水瓶在桌上完成了一整天的静物写生。';
+  else if(p<1) verdict=`差 ${goal-ml}ml 收工。别用小水思维糊弄自己，明天把 1.5L 的大水拎上桌。`;
+  else if(sins) verdict=`水量达标，但留档 ${sins} 杯小甜水。判为「勉强大水」，请于明日补交一杯白水。`;
+  else verdict='水量达标，无小甜水记录。判为「纯粹大水」，整个人通透，内耗归零。';
+  openModal(`
+    <div class="mtitle">📋 ${dkey()} 大水日报</div>
+    <div class="msub">大水监察司 · 每日结算</div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;line-height:2">
+        <div style="flex:1;min-width:110px"><div style="color:#8aa7b8">有效白水</div><b style="font-size:20px;color:var(--deep)">${ml}</b> ml</div>
+        <div style="flex:1;min-width:110px"><div style="color:#8aa7b8">目标</div><b style="font-size:20px;color:var(--deep)">${goal}</b> ml</div>
+        <div style="flex:1;min-width:110px"><div style="color:#8aa7b8">完成度</div><b style="font-size:20px;color:var(--deep)">${Math.round(p*100)}</b> %</div>
+      </div>
+      <div style="margin-top:10px"><span class="badge ${ok?(sins?'no':'ok'):'no'}">${ok?(sins?'达标但有奶茶债':'✓ 已达标'):'未达标'}</span>
+      <span class="badge ${sins?'no':'ok'}" style="margin-left:6px">🥤 小甜水 ${sins} 杯</span></div>
+    </div>
+    <div class="verdict" style="margin-bottom:12px"><b>大水判词：</b>${esc(verdict)}</div>
+    <div class="card" style="margin-bottom:12px;background:#f7f3ea">
+      <div style="font-size:11px;color:#8aa7b8;margin-bottom:5px">🏆 今日积分 · 按时间完成加分</div>
+      <div style="font-size:20px;font-weight:800;color:var(--deep)">${todayScore().total} <small style="font-size:11px;font-weight:600">分</small></div>
+      <div style="font-size:10.5px;color:#6b6255;line-height:1.8;margin-top:5px">
+        ${esc(S.settings.mood)} 心情 · 有效打卡 ${todayScore().valid} 次 · 时段加成 +${todayScore().bonus} · 早达标 +${todayScore().achieveBonus}
+      </div>
+    </div>
+    <div style="font-size:11px;color:#8aa7b8;line-height:1.8">
+      · 提醒 ${day.reminds.length} 次　· 记录 ${day.logs.length} 笔　· 连续达标 ${streak()} 天<br>
+      · 奶茶不计入有效补水；单次 &gt;500ml 或 1 小时 &gt;1000ml 会提示「别猛灌」。<br>
+      · 目标参考《中国居民膳食指南(2022)》：温和气候低活动量成人男 1700ml / 女 1500ml，热天可上调至 2000ml 左右。
+    </div>
+    <div class="mbtns">
+      <button class="btn ghost" id="rBoard">🏆 总榜</button>
+      <button class="btn ghost" id="rShare">📤 心情结算分享</button>
+      <button class="btn ghost" id="rExport">导出数据</button>
+      <button class="btn primary" id="rClose">收下判词</button>
+    </div>`);
+  $('#rClose').onclick=closeModal;
+  $('#rBoard').onclick=()=>openBoard();
+  $('#rShare').onclick=()=>openShareCard({mode:'settle',mood:S.settings.mood,
+    quote:($('#quoteText').textContent||'').trim()});
+  submitDay(dkey(),($('#quoteText').textContent||'').trim(),S.settings.mood);
+  $('#rExport').onclick=()=>{
+    const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='大水计算器-'+dkey()+'.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast('已导出本机数据');
+  };
+}
+
+/* ---------------- 弹层 / 设置 / 帮助 ---------------- */
+function openModal(html){ $('#modalBox').innerHTML=html; $('#mask').classList.add('show'); }
+function closeModal(){ $('#mask').classList.remove('show'); }
+$('#mask').addEventListener('click',e=>{ if(e.target.id==='mask') closeModal(); });
+
+function openSettings(){
+  const s=S.settings;
+  openModal(`
+    <div class="mtitle">⚙ 大水设置</div>
+    <div class="msub">全部保存在本机，刷新不丢</div>
+    <div class="fieldrow">
+      <div class="field"><label>每日目标 ml</label><input id="sGoal" type="number" min="500" max="4000" value="${s.goal}"></div>
+      <div class="field"><label>提醒间隔（分钟）</label>
+        <select id="sInterval">
+          <option value="1" ${s.interval==1?'selected':''}>1 分钟（演示模式）</option>
+          <option value="15" ${s.interval==15?'selected':''}>15 分钟</option>
+          <option value="30" ${s.interval==30?'selected':''}>30 分钟（推荐）</option>
+          <option value="60" ${s.interval==60?'selected':''}>60 分钟</option>
+        </select></div>
+    </div>
+    <div class="field"><label>⛔ 打卡冷却（防作弊，分钟）</label>
+      <input id="sCooldown" type="number" min="1" max="120" value="${clamp(Number(s.checkinCooldown)||30,1,120)}">
+      <div class="hint">两次喝水打卡至少间隔这么久，冷却期内再点会被拦下。独立于提醒间隔，切「1 分钟演示模式」也不会放宽。改小后历史连打判定会同步变化。</div></div>
+    <div class="field"><label>📍 位置（省 / 市 / 区·县·县级市）</label>
+      <div class="gp-cur" style="margin-bottom:8px">当前：<b>${esc(locLabel())}</b> · ${(S.location||FALLBACK_LOC).source==='gps'?'GPS 定位':'手动 / 默认'}<br>
+        <span style="font-size:10px;opacity:.7">坐标 ${(S.location||FALLBACK_LOC).lat.toFixed(3)}, ${(S.location||FALLBACK_LOC).lng.toFixed(3)}（WGS-84）</span></div>
+      <button class="btn primary" id="sLoc" style="width:100%">📍 重新定位 / 手动选择省市区</button>
+      <div class="hint">天气来自 Open-Meteo（免 Key）；定位取不到时会展开三级选择器，也可直接搜「丰泽」「晋江」「石狮」。</div></div>
+    <div class="field"><label>开关</label>
+      <div class="chips">
+        <button class="chip ${s.sound?'on':''}" data-tog="sound">🔊 提示音</button>
+        <button class="chip ${s.notify?'on':''}" data-tog="notify">🔔 系统通知</button>
+        <button class="chip ${s.patrol?'on':''}" data-tog="patrol">🔍 AI 随机巡检</button>
+        <button class="chip ${s.autoGoalByWeather?'on':''}" data-tog="autoGoalByWeather">🌡 热天 +300ml</button>
+      </div></div>
+    <div class="field"><label>在线大模型语录（可选，不填则用内置引擎）</label>
+      <input id="sEndpoint" placeholder="https://api.xxx.com/v1" value="${esc(s.llm.endpoint)}">
+      <input id="sKey" type="password" placeholder="API Key（仅存本机）" value="${esc(s.llm.key)}" style="margin-top:7px">
+      <input id="sModel" placeholder="模型名，如 gpt-4o-mini" value="${esc(s.llm.model)}" style="margin-top:7px">
+      <div class="hint">兼容 OpenAI Chat Completions 格式；请求只在点「生成语录」时从浏览器发出，超时或失败自动回退本地引擎。</div></div>
+    <div class="mbtns">
+      <button class="btn danger" id="sClear">清空数据</button>
+      <button class="btn ghost" id="sCancel">取消</button>
+      <button class="btn primary" id="sSave">保存</button>
+    </div>`);
+  $$('#modalBox [data-tog]').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
+  $('#sCancel').onclick=closeModal;
+  $('#sLoc').onclick=()=>{ closeModal(); openLocationPicker(); };
+  $('#sSave').onclick=()=>{
+    const g=clamp(Number($('#sGoal').value)||1700,500,4000);
+    S.settings.goal=g;
+    S.settings.interval=Number($('#sInterval').value);
+    S.settings.checkinCooldown=clamp(Number($('#sCooldown').value)||30,1,120);
+    $$('#modalBox [data-tog]').forEach(b=>S.settings[b.dataset.tog]=b.classList.contains('on'));
+    S.settings.llm={endpoint:$('#sEndpoint').value.trim(),key:$('#sKey').value.trim(),model:$('#sModel').value.trim()||'gpt-4o-mini'};
+    S.lastRemindAt=Date.now(); save(); closeModal(); renderAll();
+    fetchWeather(true); makeQuote();
+    if(S.settings.notify && 'Notification' in window && Notification.permission==='default') Notification.requestPermission();
+    toast('设置已保存');
+  };
+  $('#sClear').onclick=()=>{
+    if(!confirm('确定清空所有饮水记录与照片吗？此操作不可撤销。')) return;
+    localStorage.removeItem(KEY); S=structuredClone(DEFAULT); save(); closeModal(); renderAll(); makeQuote(); toast('已清空，重新开始大水时代');
+  };
+}
+function openHelp(){
+  openModal(`
+    <div class="mtitle">💧 大水计算器 · 玩法说明</div>
+    <div class="msub">弱者喝饮料，强者喝大水</div>
+    <div style="font-size:13px;line-height:1.95;color:#3f6479">
+      <b>① 桌宠就是进度条</b><br>左边那滴水会随今日饮水量「涨水」，可拖到屏幕任意位置；点它一下会说话。<br><br>
+      <b>② 每半小时提醒</b><br>到点弹气泡 + 提示音 + 系统通知，并现场生成一句大水语录。想快速看效果，设置里切「1 分钟演示模式」。<br><br>
+      <b>③ 实时时间 + 定位</b><br>时钟与时段一律取系统当前时间。启动会请求浏览器定位，自动反查到<b>省 / 市 / 区·县·县级市</b>；定位取不到（拒绝权限、file:// 打开、超时）会展开三级选择器，也能直接搜「丰泽」「晋江」「石狮」。位置只用来请求天气。<br><br>
+      <b>④ AI 大水语录</b><br>综合<b>实时日期与时段</b>、<b>定位后的实时天气</b>（Open-Meteo）、<b>你的心情</b>、<b>今日进度</b>与<b>奶茶前科</b>生成。不填 API Key 也能用内置语录引擎，填了就走在线模型。<br><br>
+      <b>⑤ 偷喝奶茶会被偷拍</b><br>点「偷喝奶茶 · 自首」，或撞上 AI 随机巡检，会调用摄像头抓拍一张「自首通知书」并留档。摄像头没授权就用 AI 速写代替。<b>照片只存本机，不上传。</b><br><br>
+      <b>⑥ 防作弊打卡与排行榜</b><br>两次喝水打卡至少间隔「打卡冷却」（默认 30 分钟，可在设置里单独调，与提醒间隔互相独立），冷却期内再点会被拦下并提示剩余时间；连打记录不计分还要倒扣。<b>今日榜</b>按「按时段完成加分 + 越早达标奖励越高」实时算分，<b>历史总榜</b>累计每日结算成绩（同一天只取更高分，反复结算不刷分）。可新增本机档案互相比。<br><br>
+      <b>⑦ 打卡分享</b><br>一键生成含日期、实时时间、位置、心情、水量、积分、达标时刻、大水语录与防作弊校验码的分享卡，可保存图片 / 复制文案 / 调系统分享。日报里的「心情结算分享」会带上当日判词。<b>全部本机生成，不联网、不上传。</b><br><br>
+      <b>⑧ 每日结算</b><br>白水计入有效补水，奶茶不计；目标参考膳食指南 1500~1700ml，热天自动 +300。单次超 500ml / 1 小时超 1000ml 会提醒「别猛灌」。<br><br>
+      <span style="color:#8aa7b8;font-size:11px">小提示：定位、系统通知与摄像头都要求 https 或 localhost。若双击打开受限，可在本目录执行 <code>python3 -m http.server 8000</code> 后访问 http://localhost:8000 。</span>
+    </div>
+    <div class="mbtns"><button class="btn primary" id="hClose">进入大水时代</button></div>`);
+  $('#hClose').onclick=closeModal;
+}
+
+/* ---------------- 事件绑定 ---------------- */
+$$('.watergrid .btn').forEach(b=>b.onclick=()=>addWater(b.dataset.ml));
+$('#btnCustom').onclick=()=>{ addWater($('#customMl').value); $('#customMl').value=''; };
+$('#customMl').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#btnCustom').click(); });
+$('#logList').addEventListener('click',e=>{
+  const id=e.target.dataset.id; if(!id)return;
+  today().logs=today().logs.filter(l=>l.id!==id); save(); renderAll(); toast('已删除该记录');
+});
+$('#moodChips').addEventListener('click',e=>{
+  const m=e.target.dataset.mood; if(!m)return;
+  S.settings.mood=m; today().mood=m; save(); renderMoods(); makeQuote();
+});
+$('#weatherChips').addEventListener('click',e=>{
+  const w=e.target.dataset.w; if(!w)return;
+  S.settings.manualWeather=w; weather.kind=w; weather.live=false; save(); renderWeather(); renderProgress(); makeQuote();
+});
+$('#btnQuote').onclick=makeQuote;
+$('#btnBoard').onclick=openBoard;
+$('#btnShare').onclick=()=>openShareCard({mode:'daily',
+  quote:($('#quoteText').textContent||'').trim()});
+$('#btnLoc').onclick=openLocationPicker;
+$('#btnSin').onclick=selfReport;
+$('#btnReport').onclick=openReport;
+$('#btnSet').onclick=openSettings;
+$('#btnHelp').onclick=openHelp;
+$('#btnFold').onclick=()=>{ $('#panel').classList.add('hide'); $('#togglePet').classList.add('show'); };
+$('#togglePet').onclick=()=>{ $('#panel').classList.remove('hide'); $('#togglePet').classList.remove('show'); };
+$('#pet').addEventListener('click',e=>{
+  if($('#pet').dataset.moved==='1'){ $('#pet').dataset.moved='0'; return; }
+  const q=localQuote(buildCtx()); say(q.text,5000); beep();
+});
+
+/* 拖拽 */
+(function(){
+  const pet=$('#pet'); let sx=0,sy=0,ox=0,oy=0,drag=false;
+  function place(x,y){
+    const r=pet.getBoundingClientRect();
+    pet.style.left=clamp(x,0,innerWidth-r.width)+'px';
+    pet.style.top=clamp(y,0,innerHeight-r.height)+'px';
+    pet.style.bottom='auto';
+  }
+  if(S.pet) place(S.pet.x,S.pet.y);
+  pet.addEventListener('pointerdown',e=>{
+    if(e.target.closest('#bubble'))return;
+    drag=true; pet.setPointerCapture(e.pointerId); pet.classList.add('dragging');
+    const r=pet.getBoundingClientRect(); ox=r.left; oy=r.top; sx=e.clientX; sy=e.clientY;
+  });
+  pet.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)+Math.abs(dy)>4) pet.dataset.moved='1';
+    place(ox+dx,oy+dy);
+  });
+  pet.addEventListener('pointerup',e=>{
+    if(!drag)return; drag=false; pet.classList.remove('dragging');
+    const r=pet.getBoundingClientRect(); S.pet={x:r.left,y:r.top}; save();
+    setTimeout(()=>{pet.dataset.moved='0';},80);
+  });
+  window.addEventListener('resize',()=>{ if(S.pet)place(S.pet.x,S.pet.y); });
+})();
+
+/* ---------------- 启动 ---------------- */
+async function init(){
+  ensureProfiles();
+  renderAll();
+  makeQuote();
+  initLocation();            // 实时定位；取不到再让用户选省 / 市 / 区县
+  tick();
+  setInterval(tick,10000);
+  setInterval(()=>{ renderProgress(); renderScore(); renderWeek(); updateClock(); },15000);
+  setInterval(()=>fetchWeather(),30*60*1000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ renderAll(); tick(); } });
+  if(!localStorage.getItem(KEY+'.greeted')){
+    localStorage.setItem(KEY+'.greeted','1');
+    setTimeout(()=>say('欢迎进入大水时代。弱者喝饮料，强者喝大水。点右下角「偷喝奶茶」可以自首。',8000),900);
+  }
+}
+init();
+</script>
+</body>
+</html>

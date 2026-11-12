@@ -1,0 +1,19 @@
+{
+  "key": "hashimiao-dashui",
+  "title": "大水计算器 · 合并版",
+  "source": "大水计算器-合并版.html",
+  "source_bytes": 892131,
+  "sha256": "73e9b02f488b8fe12ce2b0de627f0232028b96580f5c25e52415a87ab00c37ad",
+  "toy_entry": "index.html（单文件直传，未分包；<1MiB）",
+  "scripts": 3,
+  "styles": 1,
+  "script_src": 0,
+  "link_stylesheet": 0,
+  "data_image": 62,
+  "external_http_src_href": 0,
+  "fetch_calls": 3,
+  "xhr": 0,
+  "node_check": "3/3",
+  "note": "唯一默认外部请求为 Open-Meteo 天气（7s 超时 + 静默降级为手动设定）；在线大模型 endpoint/key 默认为空不触发；fetch(png) 为本地 data URL",
+  "toy_sdk": "云存档 / 平台分数榜，SDK 未就绪时静默降级本地"
+}
