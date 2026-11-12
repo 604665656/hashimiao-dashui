@@ -7,7 +7,9 @@
 
 ## 在线玩
 
-（上架完成后回填）
+- **GitHub Pages（已上线，现在可玩）**：https://604665656.github.io/hashimiao-dashui/ （HTTP 200，返回内容与本仓 `index.html` 逐字节一致）
+- **B站 TOY**：https://www.bilibili.com/toy/hashimiao-dashui/index.html — id `54285278645248`，2026-11-12 提交，`auditing` 中，过审后开放
+- **源码仓库**：https://github.com/604665656/hashimiao-dashui （commit `4564f3d`，55 文件）
 
 ## 合并口径
 
